@@ -156,6 +156,8 @@
 
 	export let imageGenerationEnabled = false;
 	export let webSearchEnabled = false;
+	export let webSearchEngine: 'brave' | 'serper' = 'brave';
+	export let webSearchDepth: 'quick' | 'normal' | 'deep' = 'normal';
 	export let codeInterpreterEnabled = false;
 
 	export let pendingOAuthTools = [];
@@ -203,6 +205,8 @@
 		selectedFilterIds,
 		imageGenerationEnabled,
 		webSearchEnabled,
+		webSearchEngine,
+		webSearchDepth,
 		codeInterpreterEnabled
 	});
 
@@ -2063,6 +2067,8 @@
 												bind:selectedSkillIds
 												bind:selectedFilterIds
 												bind:webSearchEnabled
+												bind:webSearchEngine
+												bind:webSearchDepth
 												bind:imageGenerationEnabled
 												bind:codeInterpreterEnabled
 												{onWebSearchToggle}
@@ -2219,9 +2225,15 @@
 											{/each}
 
 											{#if webSearchEnabled}
-												<Tooltip content={$i18n.t('Web Search')} placement="top">
+												<Tooltip
+													content={`${$i18n.t('Web Search')}: ${webSearchEngine} · ${webSearchDepth}`}
+													placement="top"
+												>
 													<button
-														on:click|preventDefault={() => (webSearchEnabled = !webSearchEnabled)}
+														on:click|preventDefault={() => {
+															webSearchEnabled = false;
+															onWebSearchToggle(false);
+														}}
 														type="button"
 														class="group p-[6px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden {webSearchEnabled ||
 														($settings?.webSearch ?? false) === 'always'
@@ -2229,6 +2241,13 @@
 															: 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 '}"
 													>
 														<GlobeAlt className="size-4" strokeWidth="1.75" />
+														<span class="max-w-24 truncate text-[11px] capitalize"
+															>{webSearchEngine} · {webSearchDepth === 'quick'
+																? 3
+																: webSearchDepth === 'deep'
+																	? 12
+																	: 6}</span
+														>
 														<div class="hidden group-hover:block">
 															<XMark className="size-4" strokeWidth="1.75" />
 														</div>

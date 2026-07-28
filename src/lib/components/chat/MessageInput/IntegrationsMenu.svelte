@@ -50,6 +50,8 @@
 
 	export let showWebSearchButton = false;
 	export let webSearchEnabled = false;
+	export let webSearchEngine: 'brave' | 'serper' = 'brave';
+	export let webSearchDepth: 'quick' | 'normal' | 'deep' = 'normal';
 	export let showImageGenerationButton = false;
 	export let imageGenerationEnabled = false;
 	export let showCodeInterpreterButton = false;
@@ -272,12 +274,8 @@
 							<button
 								class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-2 text-[13px] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
 								aria-pressed={webSearchEnabled}
-								aria-label={webSearchEnabled
-									? $i18n.t('Disable Web Search')
-									: $i18n.t('Enable Web Search')}
 								on:click={() => {
-									webSearchEnabled = !webSearchEnabled;
-									onWebSearchToggle(webSearchEnabled);
+									tab = 'web-search';
 								}}
 							>
 								<div class="flex-1 truncate">
@@ -290,14 +288,9 @@
 									</div>
 								</div>
 
-								<div class=" shrink-0">
-									<Switch
-										state={webSearchEnabled}
-										on:change={async (e) => {
-											const state = e.detail;
-											await tick();
-										}}
-									/>
+								<div class="flex shrink-0 items-center gap-1 text-gray-500">
+									<span class="capitalize">{webSearchEngine} · {webSearchDepth}</span>
+									<ChevronRight />
 								</div>
 							</button>
 						</Tooltip>
@@ -372,6 +365,81 @@
 							</button>
 						</Tooltip>
 					{/if}
+				</div>
+			{:else if tab === 'web-search'}
+				<div in:fly={{ x: 20, duration: 150 }} class="space-y-2 px-1 pb-1">
+					<button
+						class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-1 text-[13px] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+						on:click={() => {
+							tab = '';
+						}}
+					>
+						<ChevronLeft />
+						<div class="flex w-full items-center justify-between">
+							<span>{$i18n.t('Web Search')}</span>
+						</div>
+					</button>
+
+					<button
+						class="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-[13px] hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+						on:click={() => {
+							webSearchEnabled = !webSearchEnabled;
+							onWebSearchToggle(webSearchEnabled);
+						}}
+					>
+						<span>{$i18n.t('Enabled')}</span>
+						<Switch state={webSearchEnabled} />
+					</button>
+
+					<div class="px-2">
+						<div class="mb-1 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+							{$i18n.t('Search provider')}
+						</div>
+						<div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+							{#each ['brave', 'serper'] as engine}
+								<button
+									type="button"
+									class="rounded-lg px-2 py-1 text-[12px] capitalize {webSearchEngine === engine
+										? 'bg-white font-medium shadow-sm dark:bg-gray-700'
+										: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
+									on:click={() => {
+										webSearchEngine = engine as 'brave' | 'serper';
+									}}
+								>
+									{engine}
+								</button>
+							{/each}
+						</div>
+					</div>
+
+					<div class="px-2">
+						<div class="mb-1 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+							{$i18n.t('Search depth')}
+						</div>
+						<div class="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+							{#each [{ id: 'quick', label: 'Quick', sources: 3 }, { id: 'normal', label: 'Normal', sources: 6 }, { id: 'deep', label: 'Deep', sources: 12 }] as depth}
+								<button
+									type="button"
+									class="rounded-lg px-1 py-1 text-[11px] {webSearchDepth === depth.id
+										? 'bg-white font-medium shadow-sm dark:bg-gray-700'
+										: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
+									on:click={() => {
+										webSearchDepth = depth.id as 'quick' | 'normal' | 'deep';
+									}}
+								>
+									<div>{$i18n.t(depth.label)}</div>
+									<div class="text-[10px] text-gray-500">{depth.sources} {$i18n.t('sources')}</div>
+								</button>
+							{/each}
+						</div>
+						<p class="mt-1.5 text-[10px] leading-4 text-gray-500">
+							{webSearchDepth === 'quick'
+								? $i18n.t('1 parallel query, up to 3 sources')
+								: webSearchDepth === 'deep'
+									? $i18n.t('4 parallel queries, up to 12 sources')
+									: $i18n.t('2 parallel queries, up to 6 sources')}
+						</p>
+					</div>
 				</div>
 			{:else if tab === 'tools' && tools}
 				<div in:fly={{ x: 20, duration: 150 }}>

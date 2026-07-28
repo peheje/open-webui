@@ -297,6 +297,8 @@
 
 	let imageGenerationEnabled = false;
 	let webSearchEnabled = false;
+	let webSearchEngine: 'brave' | 'serper' = 'brave';
+	let webSearchDepth: 'quick' | 'normal' | 'deep' = 'normal';
 	let codeInterpreterEnabled = false;
 	let webSearchActive = false;
 	let showWebSearchConfirm = false;
@@ -537,6 +539,8 @@
 		selectedSkillIds = [];
 		selectedFilterIds = [];
 		webSearchEnabled = false;
+		webSearchEngine = 'brave';
+		webSearchDepth = 'normal';
 		imageGenerationEnabled = false;
 
 		const storageChatInput = sessionStorage.getItem(
@@ -576,6 +580,8 @@
 						selectedSkillIds = input.selectedSkillIds ?? [];
 						selectedFilterIds = input.selectedFilterIds;
 						webSearchEnabled = input.webSearchEnabled;
+						webSearchEngine = input.webSearchEngine ?? 'brave';
+						webSearchDepth = input.webSearchDepth ?? 'normal';
 						imageGenerationEnabled = input.imageGenerationEnabled;
 						codeInterpreterEnabled = input.codeInterpreterEnabled;
 					}
@@ -624,6 +630,8 @@
 		selectedSkillIds = [];
 		selectedFilterIds = [];
 		webSearchEnabled = false;
+		webSearchEngine = 'brave';
+		webSearchDepth = 'normal';
 		imageGenerationEnabled = false;
 		codeInterpreterEnabled = false;
 		prompt = '';
@@ -1328,6 +1336,8 @@
 				selectedSkillIds = [];
 				selectedFilterIds = [];
 				webSearchEnabled = false;
+				webSearchEngine = 'brave';
+				webSearchDepth = 'normal';
 				imageGenerationEnabled = false;
 				codeInterpreterEnabled = false;
 
@@ -1341,6 +1351,8 @@
 						selectedSkillIds = input.selectedSkillIds ?? [];
 						selectedFilterIds = input.selectedFilterIds;
 						webSearchEnabled = input.webSearchEnabled;
+						webSearchEngine = input.webSearchEngine ?? 'brave';
+						webSearchDepth = input.webSearchDepth ?? 'normal';
 						imageGenerationEnabled = input.imageGenerationEnabled;
 						codeInterpreterEnabled = input.codeInterpreterEnabled;
 					}
@@ -2916,7 +2928,11 @@
 					($user?.role === 'admin' || $user?.permissions?.features?.code_interpreter)
 						? codeInterpreterEnabled
 						: false,
-				web_search: webSearchActive
+				web_search: webSearchActive,
+				web_search_config: {
+					engine: webSearchEngine,
+					depth: webSearchDepth
+				}
 			};
 
 		if ($settings?.memory ?? $config?.features?.enable_memories ?? false) {
@@ -3924,6 +3940,8 @@
 										bind:codeInterpreterEnabled
 										{pendingOAuthTools}
 										bind:webSearchEnabled
+										bind:webSearchEngine
+										bind:webSearchDepth
 										bind:atSelectedModel
 										bind:showCommands
 										bind:dragged
@@ -4043,6 +4061,8 @@
 										bind:codeInterpreterEnabled
 										{pendingOAuthTools}
 										bind:webSearchEnabled
+										bind:webSearchEngine
+										bind:webSearchDepth
 										bind:atSelectedModel
 										bind:showCommands
 										bind:dragged
@@ -4089,6 +4109,8 @@
 									bind:imageGenerationEnabled
 									bind:codeInterpreterEnabled
 									bind:webSearchEnabled
+									bind:webSearchEngine
+									bind:webSearchDepth
 									bind:atSelectedModel
 									bind:showCommands
 									bind:dragged

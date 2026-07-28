@@ -54,6 +54,8 @@
 	export let imageGenerationEnabled = false;
 	export let codeInterpreterEnabled = false;
 	export let webSearchEnabled = false;
+	export let webSearchEngine: 'brave' | 'serper' = 'brave';
+	export let webSearchDepth: 'quick' | 'normal' | 'deep' = 'normal';
 
 	export let onUpload: Function = (e) => {};
 	export let onSelect = (e) => {};
@@ -226,6 +228,8 @@
 						bind:imageGenerationEnabled
 						bind:codeInterpreterEnabled
 						bind:webSearchEnabled
+						bind:webSearchEngine
+						bind:webSearchDepth
 						bind:atSelectedModel
 						bind:showCommands
 						bind:dragged

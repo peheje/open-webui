@@ -64,7 +64,12 @@ from open_webui.routers.pipelines import (
 )
 from open_webui.routers.retrieval import (
     SearchForm,
+    get_retrieval_config,
     process_web_search,
+)
+from open_webui.utils.web_search_limits import (
+    cap_search_queries,
+    resolve_web_search_options,
 )
 from open_webui.routers.tasks import (
     generate_chat_tags,
@@ -1341,7 +1346,13 @@ async def chat_completion_tools_handler(
     return body, {'sources': sources}
 
 
-async def chat_web_search_handler(request: Request, form_data: dict, extra_params: dict, user):
+async def chat_web_search_handler(
+    request: Request,
+    form_data: dict,
+    extra_params: dict,
+    user,
+    web_search_config: dict | None = None,
+):
     event_emitter = extra_params['__event_emitter__']
     await event_emitter(
         {
@@ -1405,6 +1416,15 @@ async def chat_web_search_handler(request: Request, form_data: dict, extra_param
         log.exception(e)
         queries = [user_message or '']
 
+    retrieval_config = await get_retrieval_config()
+    search_options = resolve_web_search_options(
+        web_search_config,
+        retrieval_config.WEB_SEARCH_ENGINE,
+    )
+    queries = cap_search_queries(queries, search_options['max_queries'])
+    if not queries:
+        queries = cap_search_queries([user_message or ''], search_options['max_queries'])
+
     # Check if generated queries are empty
     if len(queries) == 1 and queries[0].strip() == '':
         queries = [user_message or '']
@@ -1429,6 +1449,9 @@ async def chat_web_search_handler(request: Request, form_data: dict, extra_param
             'data': {
                 'action': 'web_search_queries_generated',
                 'queries': queries,
+                'engine': search_options['engine'],
+                'depth': search_options['depth'],
+                'max_sources': search_options['max_sources'],
                 'done': False,
             },
         }
@@ -1437,7 +1460,11 @@ async def chat_web_search_handler(request: Request, form_data: dict, extra_param
     try:
         results = await process_web_search(
             request,
-            SearchForm(queries=queries),
+            SearchForm(
+                queries=queries,
+                engine=search_options['engine'],
+                depth=search_options['depth'],
+            ),
             user=user,
         )
 
@@ -2617,7 +2644,13 @@ async def process_chat_payload(request, form_data, user, metadata, model):
         if 'web_search' in features and features['web_search']:
             # Skip forced RAG web search when native FC is enabled - model can use web_search tool
             if metadata.get('params', {}).get('function_calling') == 'legacy':
-                form_data = await chat_web_search_handler(request, form_data, extra_params, user)
+                form_data = await chat_web_search_handler(
+                    request,
+                    form_data,
+                    extra_params,
+                    user,
+                    features.get('web_search_config'),
+                )
 
         if 'image_generation' in features and features['image_generation']:
             # Skip forced image generation when native FC is enabled - model can use generate_image tool
