@@ -35,6 +35,8 @@
 	import ChevronRight from '$lib/components/icons/ChevronRight.svelte';
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
 	import LinkSlash from '$lib/components/icons/LinkSlash.svelte';
+	import LightBulb from '$lib/components/icons/LightBulb.svelte';
+	import { REASONING_LEVEL_IDS, type ReasoningControl, type ReasoningLevel } from '$lib/reasoning';
 
 	const i18n = getContext('i18n');
 
@@ -52,6 +54,8 @@
 	export let webSearchEnabled = false;
 	export let webSearchEngine: 'brave' | 'serper' = 'brave';
 	export let webSearchDepth: 'quick' | 'normal' | 'deep' = 'normal';
+	export let reasoningControl: ReasoningControl | null = null;
+	export let reasoningLevel: ReasoningLevel | null = null;
 	export let showImageGenerationButton = false;
 	export let imageGenerationEnabled = false;
 	export let showCodeInterpreterButton = false;
@@ -60,6 +64,7 @@
 	export let onShowValves: Function;
 	export let onClose: Function;
 	export let onWebSearchToggle: Function = () => {};
+	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
 	export let closeOnOutsideClick = true;
 
 	let show = false;
@@ -269,6 +274,32 @@
 						{/each}
 					{/if}
 
+					{#if reasoningControl && reasoningLevel}
+						<Tooltip content={$i18n.t('Control how much the model reasons')} placement="top-start">
+							<button
+								class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-2 text-[13px] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+								on:click={() => {
+									tab = 'reasoning';
+								}}
+							>
+								<div class="flex-1 truncate">
+									<div class="flex flex-1 gap-2 items-center">
+										<div class="shrink-0">
+											<LightBulb className="size-3.5" />
+										</div>
+
+										<div class="truncate">{$i18n.t('Reasoning')}</div>
+									</div>
+								</div>
+
+								<div class="flex shrink-0 items-center gap-1 text-gray-500">
+									<span>{reasoningLevel} · {reasoningControl.levels[reasoningLevel]?.label}</span>
+									<ChevronRight />
+								</div>
+							</button>
+						</Tooltip>
+					{/if}
+
 					{#if showWebSearchButton}
 						<Tooltip content={$i18n.t('Search the internet')} placement="top-start">
 							<button
@@ -365,6 +396,50 @@
 							</button>
 						</Tooltip>
 					{/if}
+				</div>
+			{:else if tab === 'reasoning' && reasoningControl && reasoningLevel}
+				<div in:fly={{ x: 20, duration: 150 }} class="space-y-2 px-1 pb-1">
+					<button
+						class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-1 text-[13px] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+						on:click={() => {
+							tab = '';
+						}}
+					>
+						<ChevronLeft />
+						<div class="flex w-full items-center justify-between">
+							<span>{$i18n.t('Reasoning')}</span>
+						</div>
+					</button>
+
+					<div class="px-2">
+						<div class="mb-1 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+							{$i18n.t('Thinking level')}
+						</div>
+						<div class="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+							{#each REASONING_LEVEL_IDS.filter((level) => reasoningControl?.levels[level]) as level}
+								<button
+									type="button"
+									class="web-search-choice reasoning-choice rounded-lg border border-transparent px-1 py-1 text-[11px] {reasoningLevel ===
+									level
+										? 'font-semibold text-gray-900 dark:text-white'
+										: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
+									aria-pressed={reasoningLevel === level}
+									on:click={() => {
+										onReasoningLevelChange(level);
+									}}
+								>
+									<div class="uppercase">{level}</div>
+									<div class="text-[10px] text-gray-500">
+										{reasoningControl.levels[level]?.label}
+									</div>
+								</button>
+							{/each}
+						</div>
+						<p class="mt-1.5 text-[10px] leading-4 text-gray-500">
+							{reasoningControl.levels[reasoningLevel]?.description ??
+								$i18n.t('Provider-tested reasoning preset for this model.')}
+						</p>
+					</div>
 				</div>
 			{:else if tab === 'web-search'}
 				<div in:fly={{ x: 20, duration: 150 }} class="space-y-2 px-1 pb-1">

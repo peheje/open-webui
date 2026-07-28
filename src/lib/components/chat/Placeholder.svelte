@@ -27,6 +27,7 @@
 	import MessageInput from './MessageInput.svelte';
 	import FolderPlaceholder from './Placeholder/FolderPlaceholder.svelte';
 	import FolderTitle from './Placeholder/FolderTitle.svelte';
+	import type { ReasoningLevel } from '$lib/reasoning';
 
 	const i18n = getContext('i18n');
 
@@ -56,6 +57,8 @@
 	export let webSearchEnabled = false;
 	export let webSearchEngine: 'brave' | 'serper' = 'brave';
 	export let webSearchDepth: 'quick' | 'normal' | 'deep' = 'normal';
+	export let reasoningLevel: ReasoningLevel | null = null;
+	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
 
 	export let onUpload: Function = (e) => {};
 	export let onSelect = (e) => {};
@@ -230,6 +233,8 @@
 						bind:webSearchEnabled
 						bind:webSearchEngine
 						bind:webSearchDepth
+						bind:reasoningLevel
+						{onReasoningLevelChange}
 						bind:atSelectedModel
 						bind:showCommands
 						bind:dragged

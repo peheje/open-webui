@@ -66,6 +66,7 @@
 		displayFileHandler
 	} from '$lib/utils';
 	import { AudioQueue } from '$lib/utils/audio';
+	import type { ReasoningLevel } from '$lib/reasoning';
 	import { getOutputText } from './Messages/structuredOutput';
 
 	import {
@@ -370,7 +371,7 @@
 	let prompt = '';
 	let chatFiles = [];
 	let files = [];
-	let params = {};
+	let params: Record<string, any> = {};
 	let chatVariables = {};
 	let showChatVariablesModal = false;
 	let loadedChatIdProp = '';
@@ -582,6 +583,9 @@
 						webSearchEnabled = input.webSearchEnabled;
 						webSearchEngine = input.webSearchEngine ?? 'brave';
 						webSearchDepth = input.webSearchDepth ?? 'normal';
+						if (input.reasoningLevel) {
+							params = { ...params, reasoning_level: input.reasoningLevel };
+						}
 						imageGenerationEnabled = input.imageGenerationEnabled;
 						codeInterpreterEnabled = input.codeInterpreterEnabled;
 					}
@@ -1353,6 +1357,9 @@
 						webSearchEnabled = input.webSearchEnabled;
 						webSearchEngine = input.webSearchEngine ?? 'brave';
 						webSearchDepth = input.webSearchDepth ?? 'normal';
+						if (input.reasoningLevel) {
+							params = { ...params, reasoning_level: input.reasoningLevel };
+						}
 						imageGenerationEnabled = input.imageGenerationEnabled;
 						codeInterpreterEnabled = input.codeInterpreterEnabled;
 					}
@@ -3942,6 +3949,10 @@
 										bind:webSearchEnabled
 										bind:webSearchEngine
 										bind:webSearchDepth
+										reasoningLevel={params?.reasoning_level ?? null}
+										onReasoningLevelChange={(level: ReasoningLevel) => {
+											params = { ...params, reasoning_level: level };
+										}}
 										bind:atSelectedModel
 										bind:showCommands
 										bind:dragged
@@ -4063,6 +4074,10 @@
 										bind:webSearchEnabled
 										bind:webSearchEngine
 										bind:webSearchDepth
+										reasoningLevel={params?.reasoning_level ?? null}
+										onReasoningLevelChange={(level: ReasoningLevel) => {
+											params = { ...params, reasoning_level: level };
+										}}
 										bind:atSelectedModel
 										bind:showCommands
 										bind:dragged
@@ -4111,6 +4126,10 @@
 									bind:webSearchEnabled
 									bind:webSearchEngine
 									bind:webSearchDepth
+									reasoningLevel={params?.reasoning_level ?? null}
+									onReasoningLevelChange={(level: ReasoningLevel) => {
+										params = { ...params, reasoning_level: level };
+									}}
 									bind:atSelectedModel
 									bind:showCommands
 									bind:dragged

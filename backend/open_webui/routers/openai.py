@@ -50,6 +50,7 @@ from open_webui.utils.misc import (
 )
 from open_webui.utils.payload import (
     apply_model_params_to_body_openai,
+    drop_empty_tools,
     apply_system_prompt_to_body,
 )
 from open_webui.utils.session_pool import (
@@ -1345,7 +1346,7 @@ async def generate_chat_completion(
                     part.get('text', '') for part in message['content'] if part.get('type') in ('input_text', 'text')
                 )
 
-    payload = json.dumps(payload)
+    payload = json.dumps(drop_empty_tools(payload))
 
     r = None
     streaming = False

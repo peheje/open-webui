@@ -1760,6 +1760,19 @@ export interface ModelMeta {
 	description?: string;
 	capabilities?: object;
 	profile_image_url?: string;
+	reasoning_control?: {
+		default_level: 'r0' | 'r1' | 'r2';
+		levels: Partial<
+			Record<
+				'r0' | 'r1' | 'r2',
+				{
+					label: string;
+					description?: string;
+					params?: Record<string, unknown>;
+				}
+			>
+		>;
+	};
 }
 
 export interface ModelParams {}

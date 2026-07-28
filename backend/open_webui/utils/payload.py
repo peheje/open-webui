@@ -93,6 +93,7 @@ def remove_open_webui_params(params: dict) -> dict:
         'stream_response': bool,
         'stream_delta_chunk_size': int,
         'function_calling': str,
+        'reasoning_level': str,
         'reasoning_tags': list,
         'compact_token_threshold': int,
         'system': str,
@@ -103,6 +104,20 @@ def remove_open_webui_params(params: dict) -> dict:
             del params[key]
 
     return params
+
+
+def drop_empty_tools(form_data: dict) -> dict:
+    """Omit an empty tools array after Open WebUI has finished tool resolution.
+
+    Some OpenAI-compatible providers reject ``tools: []`` even though omitting
+    the field means the same thing at the provider boundary. Open WebUI still
+    sees the explicit empty list earlier in the request pipeline, where it is
+    used to suppress builtin tool injection.
+    """
+
+    if form_data.get('tools') == []:
+        form_data.pop('tools')
+    return form_data
 
 
 # inplace function: form_data is modified

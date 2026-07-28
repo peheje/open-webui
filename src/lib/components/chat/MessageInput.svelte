@@ -88,6 +88,14 @@
 	import Cube from '../icons/Cube.svelte';
 	import Sparkles from '../icons/Sparkles.svelte';
 	import Mic from '../icons/Mic.svelte';
+	import LightBulb from '../icons/LightBulb.svelte';
+	import {
+		getNextReasoningLevel,
+		getReasoningControlForModels,
+		resolveReasoningLevel,
+		type ReasoningControl,
+		type ReasoningLevel
+	} from '$lib/reasoning';
 
 	import InputVariablesModal from './MessageInput/InputVariablesModal.svelte';
 	import Voice from '../icons/Voice.svelte';
@@ -132,6 +140,10 @@
 
 	let selectedModelIds = [];
 	$: selectedModelIds = atSelectedModel !== undefined ? [atSelectedModel.id] : selectedModels;
+	let reasoningControl: ReasoningControl | null = null;
+	let resolvedReasoningLevel: ReasoningLevel | null = null;
+	$: reasoningControl = getReasoningControlForModels($models, selectedModelIds);
+	$: resolvedReasoningLevel = resolveReasoningLevel(reasoningControl, reasoningLevel);
 	$: hasChatVariables = selectedModelIds.some(
 		(modelId) =>
 			($models.find((model) => model.id === modelId)?.info?.meta?.chat_variables_schema?.fields
@@ -158,6 +170,8 @@
 	export let webSearchEnabled = false;
 	export let webSearchEngine: 'brave' | 'serper' = 'brave';
 	export let webSearchDepth: 'quick' | 'normal' | 'deep' = 'normal';
+	export let reasoningLevel: ReasoningLevel | null = null;
+	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
 	export let codeInterpreterEnabled = false;
 
 	export let pendingOAuthTools = [];
@@ -189,6 +203,19 @@
 		integrationsMenuCloseOnOutsideClick = true;
 	}
 
+	const setReasoningLevel = (level: ReasoningLevel) => {
+		reasoningLevel = level;
+		onReasoningLevelChange(level);
+	};
+
+	const cycleReasoningLevel = () => {
+		if (!reasoningControl || !resolvedReasoningLevel) {
+			return;
+		}
+
+		setReasoningLevel(getNextReasoningLevel(reasoningControl, resolvedReasoningLevel));
+	};
+
 	$: onChange({
 		prompt,
 		files: files
@@ -207,6 +234,7 @@
 		webSearchEnabled,
 		webSearchEngine,
 		webSearchDepth,
+		reasoningLevel: resolvedReasoningLevel,
 		codeInterpreterEnabled
 	});
 
@@ -2049,16 +2077,19 @@
 										</button>
 									</InputMenu>
 
-									{#if showWebSearchButton || showImageGenerationButton || showCodeInterpreterButton || showToolsButton || showSkillsButton || (toggleFilters && toggleFilters.length > 0)}
+									{#if reasoningControl || showWebSearchButton || showImageGenerationButton || showCodeInterpreterButton || showToolsButton || showSkillsButton || (toggleFilters && toggleFilters.length > 0)}
 										<div
 											class="flex self-center w-[1px] h-4 mx-1 bg-gray-200/50 dark:bg-gray-800/50 shrink-0"
 										/>
 									{/if}
 
 									<div class="flex flex-1 items-center min-w-0 overflow-x-auto scrollbar-none">
-										{#if showWebSearchButton || showImageGenerationButton || showCodeInterpreterButton || showToolsButton || showSkillsButton || (toggleFilters && toggleFilters.length > 0)}
+										{#if reasoningControl || showWebSearchButton || showImageGenerationButton || showCodeInterpreterButton || showToolsButton || showSkillsButton || (toggleFilters && toggleFilters.length > 0)}
 											<IntegrationsMenu
 												selectedModels={selectedModelIds}
+												{reasoningControl}
+												reasoningLevel={resolvedReasoningLevel}
+												onReasoningLevelChange={setReasoningLevel}
 												{toggleFilters}
 												{showWebSearchButton}
 												{showImageGenerationButton}
@@ -2223,6 +2254,23 @@
 													</Tooltip>
 												{/if}
 											{/each}
+
+											{#if reasoningControl && resolvedReasoningLevel}
+												<Tooltip
+													content={`${$i18n.t('Reasoning')}: ${resolvedReasoningLevel} · ${reasoningControl.levels[resolvedReasoningLevel]?.label}. ${$i18n.t('Tap to cycle')}.`}
+													placement="top"
+												>
+													<button
+														on:click|preventDefault={cycleReasoningLevel}
+														type="button"
+														class="group p-[6px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden text-amber-700 dark:text-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-400/10 dark:hover:bg-amber-600/10 border border-amber-200/50 dark:border-amber-500/20"
+														aria-label={`${$i18n.t('Reasoning')}: ${resolvedReasoningLevel} · ${reasoningControl.levels[resolvedReasoningLevel]?.label}`}
+													>
+														<LightBulb className="size-4" strokeWidth="1.75" />
+														<span class="text-[11px] uppercase">{resolvedReasoningLevel}</span>
+													</button>
+												</Tooltip>
+											{/if}
 
 											{#if webSearchEnabled}
 												<Tooltip

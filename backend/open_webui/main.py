@@ -251,6 +251,7 @@ from open_webui.utils.oauth import (
 )
 from open_webui.utils.plugin import install_tool_and_function_dependencies
 from open_webui.utils.redis import get_redis_client
+from open_webui.utils.reasoning_levels import merge_reasoning_params
 from open_webui.utils.security_headers import SecurityHeadersMiddleware
 from open_webui.utils.session_pool import get_session
 from open_webui.utils.tools import set_terminal_servers, set_tool_servers
@@ -1079,11 +1080,15 @@ async def chat_completion(
             **(model_info.params.model_dump() if model_info and model_info.params else {}),
         }
         request_params = {key: value for key, value in (form_data.get('params') or {}).items() if value is not None}
+        merged_params, resolved_reasoning_level = merge_reasoning_params(
+            model_info_params,
+            request_params,
+            model_info.meta if model_info else None,
+        )
         if model_info_params or request_params:
-            form_data['params'] = {
-                **model_info_params,
-                **request_params,
-            }
+            form_data['params'] = merged_params
+        if resolved_reasoning_level:
+            request.state.reasoning_level = resolved_reasoning_level
 
         # Check base model existence for custom models
         if model_info and model_info.base_model_id:
