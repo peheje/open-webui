@@ -399,9 +399,11 @@
 							{#each ['brave', 'serper'] as engine}
 								<button
 									type="button"
-									class="rounded-lg px-2 py-1 text-[12px] capitalize {webSearchEngine === engine
-										? 'bg-white font-medium shadow-sm dark:bg-gray-700'
+									class="web-search-choice rounded-lg border border-transparent px-2 py-1 text-[12px] capitalize {webSearchEngine ===
+									engine
+										? 'font-semibold text-gray-900 dark:text-white'
 										: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
+									aria-pressed={webSearchEngine === engine}
 									on:click={() => {
 										webSearchEngine = engine as 'brave' | 'serper';
 									}}
@@ -420,9 +422,11 @@
 							{#each [{ id: 'quick', label: 'Quick', sources: 3 }, { id: 'normal', label: 'Normal', sources: 6 }, { id: 'deep', label: 'Deep', sources: 12 }] as depth}
 								<button
 									type="button"
-									class="rounded-lg px-1 py-1 text-[11px] {webSearchDepth === depth.id
-										? 'bg-white font-medium shadow-sm dark:bg-gray-700'
+									class="web-search-choice rounded-lg border border-transparent px-1 py-1 text-[11px] {webSearchDepth ===
+									depth.id
+										? 'font-semibold text-gray-900 dark:text-white'
 										: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
+									aria-pressed={webSearchDepth === depth.id}
 									on:click={() => {
 										webSearchDepth = depth.id as 'quick' | 'normal' | 'deep';
 									}}
@@ -621,3 +625,19 @@
 		</DropdownMenu>
 	</div>
 </Dropdown>
+
+<style>
+	button.web-search-choice[aria-pressed='true'] {
+		background-color: rgb(255 255 255) !important;
+		border-color: rgb(229 231 235) !important;
+		border-radius: 0.5rem !important;
+		box-shadow:
+			0 1px 2px 0 rgb(0 0 0 / 0.05),
+			0 0 0 1px rgb(0 0 0 / 0.02) !important;
+	}
+
+	:global(.dark) button.web-search-choice[aria-pressed='true'] {
+		background-color: rgb(55 65 81) !important;
+		border-color: rgb(75 85 99) !important;
+	}
+</style>
