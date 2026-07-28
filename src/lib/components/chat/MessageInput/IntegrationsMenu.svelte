@@ -627,6 +627,10 @@
 </Dropdown>
 
 <style>
+	button.web-search-choice {
+		-webkit-tap-highlight-color: transparent;
+	}
+
 	button.web-search-choice[aria-pressed='true'] {
 		background-color: rgb(255 255 255) !important;
 		border-color: rgb(229 231 235) !important;
@@ -639,5 +643,26 @@
 	:global(.dark) button.web-search-choice[aria-pressed='true'] {
 		background-color: rgb(55 65 81) !important;
 		border-color: rgb(75 85 99) !important;
+	}
+
+	button.web-search-choice[aria-pressed='false'],
+	button.web-search-choice[aria-pressed='false']:hover {
+		background-color: transparent !important;
+		border-color: transparent !important;
+		box-shadow: none !important;
+	}
+
+	button.web-search-choice:focus:not(:focus-visible) {
+		outline: none;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		button.web-search-choice[aria-pressed='false']:hover {
+			background-color: rgb(249 250 251 / 0.4) !important;
+		}
+
+		:global(.dark) button.web-search-choice[aria-pressed='false']:hover {
+			background-color: rgb(31 41 55 / 0.4) !important;
+		}
 	}
 </style>
