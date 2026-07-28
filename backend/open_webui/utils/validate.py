@@ -9,6 +9,7 @@ from open_webui.env import (
 )
 
 _USER_PROFILE_IMAGE_RE = re.compile(r'^/api/v1/users/[^/?#]+/profile/image$')
+_MODEL_ICON_RE = re.compile(r'^/static/model-icons/[a-z0-9_-]+\.png$')
 
 # Data-URI prefix validator derived from PROFILE_IMAGE_ALLOWED_MIME_TYPES.
 _mime_suffixes = '|'.join(re.escape(t.split('/')[-1]) for t in sorted(PROFILE_IMAGE_ALLOWED_MIME_TYPES))
@@ -51,6 +52,9 @@ def validate_profile_image_url(url: str) -> str:
     # --- Relative paths (exact match + anchored regex only) -----------
 
     if url in _SAFE_STATIC_PATHS:
+        return url
+
+    if _MODEL_ICON_RE.match(url):
         return url
 
     if _USER_PROFILE_IMAGE_RE.match(url):

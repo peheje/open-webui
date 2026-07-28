@@ -35,6 +35,8 @@
 
 	export let selectedModels: string[] = [];
 	export let fileUploadCapableModels: string[] = [];
+	export let pdfAttachmentMode: 'auto' | 'page_images' | 'native_pdf' = 'auto';
+	export let allSelectedModelsExplicitlySupportVision = false;
 
 	export let screenCaptureHandler: Function;
 	export let uploadFilesHandler: Function;
@@ -154,6 +156,35 @@
 							<div class="line-clamp-1">{$i18n.t('Upload Files')}</div>
 						</button>
 					</Tooltip>
+
+					<div class="mx-2 my-1.5 rounded-lg bg-gray-50/70 px-2 py-1.5 dark:bg-gray-800/50">
+						<label
+							for="pdf-attachment-mode"
+							class="mb-1 block text-[10px] font-medium uppercase tracking-wide text-gray-500"
+						>
+							{$i18n.t('PDF handling')}
+						</label>
+						<select
+							id="pdf-attachment-mode"
+							bind:value={pdfAttachmentMode}
+							class="w-full rounded-md border border-gray-200 bg-white px-1.5 py-1 text-xs dark:border-gray-700 dark:bg-gray-900"
+						>
+							<option value="auto">{$i18n.t('Auto — text, OCR if needed')}</option>
+							<option value="page_images" disabled={!allSelectedModelsExplicitlySupportVision}>
+								{$i18n.t('Page images — vision, max 10')}
+							</option>
+							<option value="native_pdf" disabled>
+								{$i18n.t('Native PDF — unavailable')}
+							</option>
+						</select>
+						<p class="mt-1 text-[10px] leading-tight text-gray-500 dark:text-gray-400">
+							{#if pdfAttachmentMode === 'page_images'}
+								{$i18n.t('Higher token use. Every selected model must support vision.')}
+							{:else}
+								{$i18n.t('Auto extracts searchable text locally and only OCRs blank pages.')}
+							{/if}
+						</p>
+					</div>
 
 					<Tooltip
 						content={fileUploadCapableModels.length !== selectedModels.length

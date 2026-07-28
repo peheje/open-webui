@@ -363,11 +363,13 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(periodic_usage_pool_cleanup())
     asyncio.create_task(periodic_session_pool_cleanup())
 
-    from open_webui.utils.automations import scheduler_worker_loop
+    # Resolve startup configuration before starting the scheduler. On SQLite
+    # under proot, letting the scheduler's first poll race these reads can leave
+    # application startup waiting indefinitely for the async database worker.
+    base_models_cache_enabled = await Config.get('models.base_models_cache')
+    tool_server_connections = await Config.get('tool_server.connections', []) or []
 
-    asyncio.create_task(scheduler_worker_loop(app))
-
-    if await Config.get('models.base_models_cache'):
+    if base_models_cache_enabled:
         try:
             await get_all_models(
                 Request(
@@ -392,7 +394,7 @@ async def lifespan(app: FastAPI):
             log.warning(f'Failed to pre-fetch models at startup: {e}')
 
     # Pre-fetch tool server specs so the first request doesn't pay the latency cost
-    if len(await Config.get('tool_server.connections', []) or []) > 0:
+    if len(tool_server_connections) > 0:
         mock_request = Request(
             {
                 'type': 'http',
@@ -421,6 +423,10 @@ async def lifespan(app: FastAPI):
             log.info(f'Initialized {len(app.state.TERMINAL_SERVERS)} terminal server(s)')
         except Exception as e:
             log.warning(f'Failed to initialize terminal servers at startup: {e}')
+
+    from open_webui.utils.automations import scheduler_worker_loop
+
+    asyncio.create_task(scheduler_worker_loop(app))
 
     # Mark application as ready to accept traffic from a startup perspective.
     if license_task:
@@ -1082,7 +1088,10 @@ async def chat_completion(
         # Check base model existence for custom models
         if model_info and model_info.base_model_id:
             base_model_id = model_info.base_model_id
-            if base_model_id not in request.app.state.MODELS:
+            base_model_available = base_model_id in request.app.state.MODELS or any(
+                base_model.get('id') == base_model_id for base_model in request.app.state.BASE_MODELS
+            )
+            if not base_model_available:
                 if ENABLE_CUSTOM_MODEL_FALLBACK:
                     default_models = ((await Config.get('ui.default_models')) or '').split(',')
 

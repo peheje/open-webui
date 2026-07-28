@@ -43,6 +43,7 @@ from open_webui.env import (
 from open_webui.models.chats import Chats
 from open_webui.models.config import Config
 from open_webui.models.folders import Folders
+from open_webui.models.files import Files
 from open_webui.models.functions import Functions
 from open_webui.models.models import Models
 from open_webui.models.notes import Notes
@@ -72,11 +73,13 @@ from open_webui.routers.tasks import (
     generate_queries,
     generate_title,
 )
+from open_webui.storage.provider import Storage
 from open_webui.socket.main import (
     get_event_call,
     get_event_emitter,
 )
 from open_webui.utils.access_control import has_connection_access, has_permission
+from open_webui.utils.access_control.files import has_access_to_file
 from open_webui.models.access_grants import AccessGrants
 from open_webui.utils.access_control.folders import has_folder_access
 from open_webui.utils.chat import generate_chat_completion
@@ -1808,6 +1811,104 @@ async def chat_completion_files_handler(
     sources = []
 
     if files := body.get('metadata', {}).get('files', None):
+        page_image_files = [item for item in files if item.get('attachment_mode') == 'page_images']
+        files = [item for item in files if item.get('attachment_mode') != 'page_images']
+
+        if page_image_files:
+            model = extra_params.get('__model__') or {}
+            capabilities = model.get('info', {}).get('meta', {}).get('capabilities') or {}
+            if capabilities.get('vision') is not True:
+                message = 'Page-image PDF mode requires a model explicitly marked as vision-capable.'
+                await __event_emitter__(
+                    {
+                        'type': 'status',
+                        'data': {
+                            'action': 'pdf_page_images',
+                            'description': message,
+                            'done': True,
+                            'error': True,
+                        },
+                    }
+                )
+                raise ValueError(message)
+
+            image_parts = []
+            for item in page_image_files:
+                file_id = item.get('id')
+                file = await Files.get_file_by_id(file_id)
+                if not file:
+                    raise ValueError('The attached PDF could not be found.')
+                if (
+                    file.user_id != user.id
+                    and user.role != 'admin'
+                    and not await has_access_to_file(file_id, 'read', user)
+                ):
+                    raise ValueError('You do not have access to the attached PDF.')
+
+                content_type = (file.meta or {}).get('content_type', '')
+                if content_type != 'application/pdf' and not file.filename.lower().endswith('.pdf'):
+                    raise ValueError('Page-image mode only supports PDF files.')
+
+                file_path = await asyncio.to_thread(Storage.get_file, file.path)
+                page_limit = min(max(int(item.get('pdf_page_limit', 10)), 1), 10)
+                dpi = min(max(int(item.get('pdf_dpi', 150)), 72), 200)
+
+                def render_pdf_pages():
+                    import pymupdf
+
+                    rendered = []
+                    with pymupdf.open(file_path) as pdf:
+                        if pdf.page_count > page_limit:
+                            raise ValueError(
+                                f'{file.filename} has {pdf.page_count} pages; Page images is limited '
+                                f'to {page_limit}. Split the PDF or use Auto.'
+                            )
+                        scale = dpi / 72
+                        for page_index in range(pdf.page_count):
+                            pixmap = pdf.load_page(page_index).get_pixmap(
+                                matrix=pymupdf.Matrix(scale, scale),
+                                colorspace=pymupdf.csRGB,
+                                alpha=False,
+                            )
+                            encoded = base64.b64encode(
+                                pixmap.tobytes('jpeg', jpg_quality=82)
+                            ).decode('ascii')
+                            rendered.append(
+                                {
+                                    'type': 'image_url',
+                                    'image_url': {'url': f'data:image/jpeg;base64,{encoded}'},
+                                }
+                            )
+                    return rendered
+
+                rendered = await asyncio.to_thread(render_pdf_pages)
+                image_parts.extend(rendered)
+                await __event_emitter__(
+                    {
+                        'type': 'status',
+                        'data': {
+                            'action': 'pdf_page_images',
+                            'description': f'Rendered {len(rendered)} PDF page(s) as images',
+                            'count': len(rendered),
+                            'done': True,
+                        },
+                    }
+                )
+
+            last_user_item = get_last_user_message_item(body['messages'])
+            if last_user_item and image_parts:
+                content = last_user_item.get('content', '')
+                if isinstance(content, str):
+                    last_user_item['content'] = [
+                        {'type': 'text', 'text': content},
+                        *image_parts,
+                    ]
+                elif isinstance(content, list):
+                    last_user_item['content'] = [*content, *image_parts]
+
+        if not files:
+            return body, {'sources': sources}
+
         # Check if all files are in full context mode
         all_full_context = all(item.get('context') == 'full' for item in files)
 
@@ -2860,13 +2961,19 @@ async def process_chat_payload(request, form_data, user, metadata, model):
 
     # Check if file context extraction is enabled for this model (default True)
     file_context_enabled = (model.get('info', {}).get('meta', {}).get('capabilities') or {}).get('file_context', True)
+    has_page_image_pdf = any(
+        item.get('attachment_mode') == 'page_images'
+        for item in (form_data.get('metadata', {}).get('files') or [])
+    )
 
-    if file_context_enabled:
+    if file_context_enabled or has_page_image_pdf:
         try:
             form_data, flags = await chat_completion_files_handler(request, form_data, extra_params, user)
             sources.extend(flags.get('sources', []))
         except Exception as e:
             log.exception(e)
+            if has_page_image_pdf:
+                raise
 
     # Save the pre-RAG message state so the native tool call loop can
     # restore to the true original (before file-source injection) rather

@@ -618,6 +618,8 @@ async def get_file_process_status(
                             event = {'status': status}
                             if status == 'failed':
                                 event['error'] = data.get('error')
+                            if status in ('completed', 'failed') and data.get('ingestion'):
+                                event['ingestion'] = data.get('ingestion')
 
                             yield f'data: {json.dumps(event)}\n\n'
                             if status in ('completed', 'failed'):

@@ -26,6 +26,8 @@
 	export let item = null;
 	export let edit = false;
 	export let small = false;
+	export let detail = '';
+	export let detailError = false;
 
 	export let name: string;
 	export let type: string;
@@ -162,8 +164,12 @@
 			</div>
 		</div>
 	{:else}
-		<Tooltip content={decodeString(name)} className="flex flex-col w-full" placement="top-start">
-			<div class="flex flex-col justify-center -space-y-0.5 px-1 w-full">
+		<Tooltip
+			content={detail ? `${decodeString(name)} — ${detail}` : decodeString(name)}
+			className="flex flex-col w-full"
+			placement="top-start"
+		>
+			<div class="flex flex-col justify-center px-1 w-full min-w-0">
 				<div class=" dark:text-gray-100 text-sm flex justify-between items-center">
 					<div class="font-normal line-clamp-1 flex-1 pr-1">{decodeString(name)}</div>
 					{#if size}
@@ -172,6 +178,15 @@
 						<div class="text-gray-500 text-xs capitalize shrink-0">{type}</div>
 					{/if}
 				</div>
+				{#if detail}
+					<div
+						class="line-clamp-1 text-[10px] leading-tight {detailError
+							? 'text-red-600 dark:text-red-400'
+							: 'text-gray-500 dark:text-gray-400'}"
+					>
+						{detail}
+					</div>
+				{/if}
 			</div>
 		</Tooltip>
 	{/if}

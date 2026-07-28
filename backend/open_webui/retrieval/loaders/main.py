@@ -178,6 +178,88 @@ class TikaLoader:
             raise Exception(f'Error calling Tika: {r.reason}')
 
 
+class ConditionalOCRPDFLoader:
+    """Extract native PDF text first and OCR only pages that are otherwise empty."""
+
+    OCR_DPI = 150
+
+    def __init__(self, file_path, *, mode='page', ocr_fallback=False):
+        self.file_path = file_path
+        self.mode = mode
+        self.ocr_fallback = ocr_fallback
+
+    def _ocr_empty_pages(self, documents: list[Document]) -> list[Document]:
+        if not self.ocr_fallback:
+            return documents
+
+        empty_pages = {
+            index
+            for index, document in enumerate(documents)
+            if not (document.page_content or '').strip()
+        }
+        if not empty_pages:
+            return documents
+
+        from langchain_community.document_loaders.parsers.images import RapidOCRBlobParser
+        from langchain_core.documents.base import Blob
+        import pymupdf
+
+        parser = RapidOCRBlobParser()
+
+        log.info(
+            'Native PDF extraction was empty on %d page(s); running local OCR fallback at %d DPI for %s',
+            len(empty_pages),
+            self.OCR_DPI,
+            self.file_path,
+        )
+
+        with pymupdf.open(self.file_path) as pdf:
+            for page_index in sorted(empty_pages):
+                if page_index >= pdf.page_count:
+                    continue
+
+                page = pdf.load_page(page_index)
+                scale = self.OCR_DPI / 72
+                pixmap = page.get_pixmap(
+                    matrix=pymupdf.Matrix(scale, scale),
+                    colorspace=pymupdf.csRGB,
+                    alpha=False,
+                )
+                blob = Blob.from_data(
+                    pixmap.tobytes('png'),
+                    mime_type='image/png',
+                )
+                text = next(parser.lazy_parse(blob)).page_content or ''
+                if text.strip():
+                    documents[page_index].page_content = text.strip()
+                    documents[page_index].metadata['ocr'] = 'rapidocr'
+                    documents[page_index].metadata['ocr_dpi'] = self.OCR_DPI
+
+        return documents
+
+    def load(self) -> list[Document]:
+        # Always load in page mode so empty pages can be repaired individually.
+        documents = PyPDFLoader(
+            self.file_path,
+            extract_images=False,
+            mode='page',
+        ).load()
+        documents = self._ocr_empty_pages(documents)
+
+        if self.mode == 'single':
+            metadata = documents[0].metadata.copy() if documents else {'source': self.file_path}
+            metadata.pop('page', None)
+            metadata.pop('page_label', None)
+            return [
+                Document(
+                    page_content='\n\f'.join(document.page_content for document in documents),
+                    metadata=metadata,
+                )
+            ]
+
+        return documents
+
+
 class DoclingLoader:
     def __init__(self, url, api_key=None, file_path=None, mime_type=None, params=None):
         self.url = url.rstrip('/')
@@ -564,9 +646,13 @@ class Loader:
             )
         else:
             if file_ext == 'pdf':
-                loader = PyPDFLoader(
+                loader = ConditionalOCRPDFLoader(
                     file_path,
-                    extract_images=self.kwargs.get('PDF_EXTRACT_IMAGES'),
+                    # "Auto" is intentionally self-contained: native text is
+                    # cheap, and only pages with no native text fall back to
+                    # local OCR. This must not depend on the older
+                    # PDF_EXTRACT_IMAGES admin toggle.
+                    ocr_fallback=True,
                     mode=self.kwargs.get('PDF_LOADER_MODE', 'page'),
                 )
             elif file_ext == 'csv':

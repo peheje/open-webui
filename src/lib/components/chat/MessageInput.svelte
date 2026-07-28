@@ -610,6 +610,7 @@
 		| 'code_interpreter'
 		| 'terminal';
 	type ModelCapabilitiesById = Record<string, Partial<Record<ModelCapability, boolean>>>;
+	type PDFAttachmentMode = 'auto' | 'page_images' | 'native_pdf';
 
 	let modelCapabilitiesById: ModelCapabilitiesById = {};
 	$: modelCapabilitiesById = Object.fromEntries(
@@ -624,6 +625,12 @@
 
 	let visionCapableModels = [];
 	$: visionCapableModels = getCapableModelIds(selectedModelIds, 'vision', modelCapabilitiesById);
+	let allSelectedModelsExplicitlySupportVision = false;
+	$: allSelectedModelsExplicitlySupportVision =
+		selectedModelIds.length > 0 &&
+		selectedModelIds.every((id) => modelCapabilitiesById[id]?.vision === true);
+
+	let pdfAttachmentMode: PDFAttachmentMode = 'auto';
 
 	let fileUploadCapableModels = [];
 	$: fileUploadCapableModels = getCapableModelIds(
@@ -782,18 +789,32 @@
 		if (!$temporaryChatEnabled) {
 			try {
 				// If the file is an audio file, provide the language for STT.
-				let metadata = null;
+				let metadata = {
+					...(itemData?.attachment_mode
+						? {
+								attachment_mode: itemData.attachment_mode,
+								pdf_page_limit: itemData?.pdf_page_limit,
+								pdf_dpi: itemData?.pdf_dpi
+							}
+						: {})
+				};
 				if (
 					(file.type.startsWith('audio/') || file.type.startsWith('video/')) &&
 					$settings?.audio?.stt?.language
 				) {
 					metadata = {
+						...metadata,
 						language: $settings?.audio?.stt?.language
 					};
 				}
 
 				// During the file upload, file content is automatically extracted.
-				const uploadedFile = await uploadFile(localStorage.token, file, metadata, process);
+				const uploadedFile = await uploadFile(
+					localStorage.token,
+					file,
+					Object.keys(metadata).length > 0 ? metadata : null,
+					process
+				);
 
 				if (uploadedFile) {
 					console.log('File upload completed:', {
@@ -804,11 +825,15 @@
 
 					if (uploadedFile.error) {
 						console.warn('File upload warning:', uploadedFile.error);
-						toast.warning(uploadedFile.error);
+						fileItem.status = 'failed';
+						fileItem.error = uploadedFile.error;
+						toast.error(uploadedFile.error);
+					} else {
+						fileItem.status = 'uploaded';
 					}
 
-					fileItem.status = 'uploaded';
 					fileItem.file = uploadedFile;
+					fileItem.ingestion = uploadedFile?.data?.ingestion;
 					fileItem.id = uploadedFile.id;
 					fileItem.collection_name =
 						uploadedFile?.meta?.collection_name || uploadedFile?.collection_name;
@@ -893,6 +918,8 @@
 				return;
 			}
 
+			const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
 			if (file['type'].startsWith('image/')) {
 				if (visionCapableModels.length === 0) {
 					toast.error($i18n.t('Selected model(s) do not support image inputs'));
@@ -960,10 +987,58 @@
 				};
 
 				reader.readAsDataURL(file['type'] === 'image/heic' ? await convertHeicToJpeg(file) : file);
+			} else if (isPDF) {
+				if (pdfAttachmentMode === 'native_pdf') {
+					toast.error($i18n.t('Native PDF is not available for the selected provider.'));
+					return;
+				}
+				if (pdfAttachmentMode === 'page_images' && !allSelectedModelsExplicitlySupportVision) {
+					toast.error(
+						$i18n.t('Page images requires every selected model to explicitly support vision.')
+					);
+					return;
+				}
+
+				const pageImageMode = pdfAttachmentMode === 'page_images';
+				uploadFileHandler(file, !pageImageMode, {
+					attachment_mode: pageImageMode ? 'page_images' : 'auto',
+					pdf_page_limit: pageImageMode ? 10 : undefined,
+					pdf_dpi: pageImageMode ? 150 : undefined
+				});
 			} else {
-				uploadFileHandler(file);
+				uploadFileHandler(file, true, { attachment_mode: 'auto' });
 			}
 		});
+	};
+
+	const getFilePipelineDetail = (file) => {
+		if (file?.status === 'uploading') {
+			return $i18n.t('Uploading and processing…');
+		}
+		if (file?.status === 'failed' || file?.error) {
+			return $i18n.t('Processing failed');
+		}
+		if (file?.attachment_mode === 'page_images') {
+			return $i18n.t('Page images · vision · max 10 pages');
+		}
+
+		const ingestion = file?.ingestion ?? file?.file?.data?.ingestion;
+		if (ingestion) {
+			const pages = ingestion.pages ?? 0;
+			const characters = Number(ingestion.characters ?? 0).toLocaleString();
+			if (ingestion.mode === 'ocr') {
+				return $i18n.t('OCR · {{ocrPages}}/{{pages}} pages · {{characters}} chars', {
+					ocrPages: ingestion.ocr_pages ?? 0,
+					pages,
+					characters
+				});
+			}
+			return $i18n.t('Text extracted · {{pages}} pages · {{characters}} chars', {
+				pages,
+				characters
+			});
+		}
+		return file?.status === 'uploaded' ? $i18n.t('Uploaded') : '';
 	};
 
 	const createNote = async () => {
@@ -1691,6 +1766,8 @@
 												dismissible={true}
 												edit={true}
 												small={true}
+												detail={getFilePipelineDetail(file)}
+												detailError={file?.status === 'failed' || Boolean(file?.error)}
 												modal={['file', 'collection'].includes(file?.type)}
 												on:dismiss={async () => {
 													// Remove from UI state
@@ -1906,6 +1983,8 @@
 								<div class="ml-1 self-end flex items-center flex-1 min-w-0">
 									<InputMenu
 										bind:files
+										bind:pdfAttachmentMode
+										{allSelectedModelsExplicitlySupportVision}
 										selectedModels={selectedModelIds}
 										{fileUploadCapableModels}
 										{screenCaptureHandler}
@@ -1920,7 +1999,7 @@
 													const file = new File([fileData.blob], fileData.name, {
 														type: fileData.blob.type
 													});
-													await uploadFileHandler(file);
+													await inputFilesHandler([file]);
 												} else {
 													console.log('No file was selected from Google Drive');
 												}
@@ -1940,7 +2019,7 @@
 													const file = new File([fileData.blob], fileData.name, {
 														type: fileData.blob.type || 'application/octet-stream'
 													});
-													await uploadFileHandler(file);
+													await inputFilesHandler([file]);
 												} else {
 													console.log('No file was selected from OneDrive');
 												}

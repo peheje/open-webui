@@ -1938,9 +1938,16 @@ async def process_file(
                 text_content = ' '.join([doc.page_content for doc in docs])
 
             log.debug(f'text_content: {text_content}')
+            ocr_pages = sum(1 for doc in docs if doc.metadata.get('ocr'))
+            ingestion = {
+                'mode': 'ocr' if ocr_pages else 'text',
+                'pages': len(docs),
+                'ocr_pages': ocr_pages,
+                'characters': len(text_content),
+            }
             await Files.update_file_data_by_id(
                 file.id,
-                {'content': text_content},
+                {'content': text_content, 'ingestion': ingestion},
                 db=db,
             )
             hash = calculate_sha256_string(text_content)
