@@ -424,6 +424,7 @@
 										: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
 									aria-pressed={reasoningLevel === level}
 									on:click={() => {
+										reasoningLevel = level;
 										onReasoningLevelChange(level);
 									}}
 								>
@@ -708,6 +709,19 @@
 	:global(.dark) button.web-search-choice[aria-pressed='true'] {
 		background-color: rgb(55 65 81) !important;
 		border-color: rgb(75 85 99) !important;
+	}
+
+	button.reasoning-choice[aria-pressed='true'] {
+		background-color: rgb(224 242 254) !important;
+		border-color: rgb(125 211 252) !important;
+		box-shadow:
+			0 1px 2px 0 rgb(14 165 233 / 0.08),
+			0 0 0 1px rgb(14 165 233 / 0.06) !important;
+	}
+
+	:global(.dark) button.reasoning-choice[aria-pressed='true'] {
+		background-color: rgb(12 74 110) !important;
+		border-color: rgb(3 105 161) !important;
 	}
 
 	button.web-search-choice[aria-pressed='false'],
