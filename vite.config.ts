@@ -41,7 +41,12 @@ export default defineConfig({
 					'/api': { target: devProxyTarget, changeOrigin: true, ws: true },
 					'/openai': { target: devProxyTarget, changeOrigin: true, ws: true },
 					'/ollama': { target: devProxyTarget, changeOrigin: true, ws: true },
-					'/ws': { target: devProxyTarget, changeOrigin: true, ws: true },
+					'/ws': {
+						target: devProxyTarget,
+						changeOrigin: true,
+						ws: true,
+						rewriteWsOrigin: true
+					},
 					'/static': { target: devProxyTarget, changeOrigin: true },
 					'/oauth': { target: devProxyTarget, changeOrigin: true },
 					'/health': { target: devProxyTarget, changeOrigin: true },
