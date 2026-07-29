@@ -498,10 +498,10 @@
 						</div>
 						<!-- Native models decide how many searches they need; this only selects the provider. -->
 						<div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
-							{#each ['brave', 'serper'] as engine}
+							{#each ['brave', 'serper'] as engine (engine)}
 								<button
 									type="button"
-									class="web-search-choice rounded-lg border border-transparent px-2 py-1 text-[12px] capitalize {webSearchEngine ===
+									class="web-search-choice relative overflow-hidden rounded-lg border border-transparent px-2 py-1 text-[12px] capitalize {webSearchEngine ===
 									engine
 										? 'font-semibold text-gray-900 dark:text-white'
 										: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
@@ -510,7 +510,13 @@
 										webSearchEngine = engine as 'brave' | 'serper';
 									}}
 								>
-									{engine}
+									{#if webSearchEngine === engine}
+										<span
+											aria-hidden="true"
+											class="pointer-events-none absolute inset-0 rounded-lg border border-sky-300 bg-sky-100 dark:border-sky-700 dark:bg-sky-900/70"
+										></span>
+									{/if}
+									<span class="relative z-10">{engine}</span>
 								</button>
 							{/each}
 						</div>
