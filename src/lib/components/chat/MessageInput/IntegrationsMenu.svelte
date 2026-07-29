@@ -415,10 +415,10 @@
 							{$i18n.t('Thinking level')}
 						</div>
 						<div class="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
-							{#each REASONING_LEVEL_IDS.filter((level) => reasoningControl?.levels[level]) as level}
+							{#each REASONING_LEVEL_IDS.filter((level) => reasoningControl?.levels[level]) as level (level)}
 								<button
 									type="button"
-									class="web-search-choice reasoning-choice rounded-lg border border-transparent px-1 py-1 text-[11px] {reasoningLevel ===
+									class="web-search-choice reasoning-choice relative overflow-hidden rounded-lg border border-transparent px-1 py-1 text-[11px] {reasoningLevel ===
 									level
 										? 'font-semibold text-gray-900 dark:text-white'
 										: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
@@ -428,8 +428,14 @@
 										onReasoningLevelChange(level);
 									}}
 								>
-									<div class="uppercase">{level}</div>
-									<div class="text-[10px] text-gray-500">
+									{#if reasoningLevel === level}
+										<span
+											aria-hidden="true"
+											class="pointer-events-none absolute inset-0 rounded-lg border border-sky-300 bg-sky-100 dark:border-sky-700 dark:bg-sky-900/70"
+										></span>
+									{/if}
+									<div class="relative z-10 uppercase">{level}</div>
+									<div class="relative z-10 text-[10px] text-gray-500 dark:text-gray-300">
 										{reasoningControl.levels[level]?.label}
 									</div>
 								</button>
@@ -709,19 +715,6 @@
 	:global(.dark) button.web-search-choice[aria-pressed='true'] {
 		background-color: rgb(55 65 81) !important;
 		border-color: rgb(75 85 99) !important;
-	}
-
-	button.reasoning-choice[aria-pressed='true'] {
-		background-color: rgb(224 242 254) !important;
-		border-color: rgb(125 211 252) !important;
-		box-shadow:
-			0 1px 2px 0 rgb(14 165 233 / 0.08),
-			0 0 0 1px rgb(14 165 233 / 0.06) !important;
-	}
-
-	:global(.dark) button.reasoning-choice[aria-pressed='true'] {
-		background-color: rgb(12 74 110) !important;
-		border-color: rgb(3 105 161) !important;
 	}
 
 	button.web-search-choice[aria-pressed='false'],
