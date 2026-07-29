@@ -67,10 +67,7 @@ from open_webui.routers.retrieval import (
     get_retrieval_config,
     process_web_search,
 )
-from open_webui.utils.web_search_limits import (
-    cap_search_queries,
-    resolve_web_search_options,
-)
+from open_webui.utils.web_search_config import resolve_web_search_engine
 from open_webui.routers.tasks import (
     generate_chat_tags,
     generate_follow_ups,
@@ -1417,13 +1414,10 @@ async def chat_web_search_handler(
         queries = [user_message or '']
 
     retrieval_config = await get_retrieval_config()
-    search_options = resolve_web_search_options(
+    search_engine = resolve_web_search_engine(
         web_search_config,
         retrieval_config.WEB_SEARCH_ENGINE,
     )
-    queries = cap_search_queries(queries, search_options['max_queries'])
-    if not queries:
-        queries = cap_search_queries([user_message or ''], search_options['max_queries'])
 
     # Check if generated queries are empty
     if len(queries) == 1 and queries[0].strip() == '':
@@ -1449,9 +1443,7 @@ async def chat_web_search_handler(
             'data': {
                 'action': 'web_search_queries_generated',
                 'queries': queries,
-                'engine': search_options['engine'],
-                'depth': search_options['depth'],
-                'max_sources': search_options['max_sources'],
+                'engine': search_engine,
                 'done': False,
             },
         }
@@ -1462,8 +1454,7 @@ async def chat_web_search_handler(
             request,
             SearchForm(
                 queries=queries,
-                engine=search_options['engine'],
-                depth=search_options['depth'],
+                engine=search_engine,
             ),
             user=user,
         )

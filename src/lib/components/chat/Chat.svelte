@@ -299,7 +299,6 @@
 	let imageGenerationEnabled = false;
 	let webSearchEnabled = false;
 	let webSearchEngine: 'brave' | 'serper' = 'brave';
-	let webSearchDepth: 'quick' | 'normal' | 'deep' = 'normal';
 	let codeInterpreterEnabled = false;
 	let webSearchActive = false;
 	let showWebSearchConfirm = false;
@@ -541,7 +540,6 @@
 		selectedFilterIds = [];
 		webSearchEnabled = false;
 		webSearchEngine = 'brave';
-		webSearchDepth = 'normal';
 		imageGenerationEnabled = false;
 
 		const storageChatInput = sessionStorage.getItem(
@@ -582,7 +580,6 @@
 						selectedFilterIds = input.selectedFilterIds;
 						webSearchEnabled = input.webSearchEnabled;
 						webSearchEngine = input.webSearchEngine ?? 'brave';
-						webSearchDepth = input.webSearchDepth ?? 'normal';
 						if (input.reasoningLevel) {
 							params = { ...params, reasoning_level: input.reasoningLevel };
 						}
@@ -635,7 +632,6 @@
 		selectedFilterIds = [];
 		webSearchEnabled = false;
 		webSearchEngine = 'brave';
-		webSearchDepth = 'normal';
 		imageGenerationEnabled = false;
 		codeInterpreterEnabled = false;
 		prompt = '';
@@ -1341,7 +1337,6 @@
 				selectedFilterIds = [];
 				webSearchEnabled = false;
 				webSearchEngine = 'brave';
-				webSearchDepth = 'normal';
 				imageGenerationEnabled = false;
 				codeInterpreterEnabled = false;
 
@@ -1356,7 +1351,6 @@
 						selectedFilterIds = input.selectedFilterIds;
 						webSearchEnabled = input.webSearchEnabled;
 						webSearchEngine = input.webSearchEngine ?? 'brave';
-						webSearchDepth = input.webSearchDepth ?? 'normal';
 						if (input.reasoningLevel) {
 							params = { ...params, reasoning_level: input.reasoningLevel };
 						}
@@ -2937,8 +2931,7 @@
 						: false,
 				web_search: webSearchActive,
 				web_search_config: {
-					engine: webSearchEngine,
-					depth: webSearchDepth
+					engine: webSearchEngine
 				}
 			};
 
@@ -3948,7 +3941,6 @@
 										{pendingOAuthTools}
 										bind:webSearchEnabled
 										bind:webSearchEngine
-										bind:webSearchDepth
 										reasoningLevel={params?.reasoning_level ?? null}
 										onReasoningLevelChange={(level: ReasoningLevel) => {
 											params = { ...params, reasoning_level: level };
@@ -4073,7 +4065,6 @@
 										{pendingOAuthTools}
 										bind:webSearchEnabled
 										bind:webSearchEngine
-										bind:webSearchDepth
 										reasoningLevel={params?.reasoning_level ?? null}
 										onReasoningLevelChange={(level: ReasoningLevel) => {
 											params = { ...params, reasoning_level: level };
@@ -4125,7 +4116,6 @@
 									bind:codeInterpreterEnabled
 									bind:webSearchEnabled
 									bind:webSearchEngine
-									bind:webSearchDepth
 									reasoningLevel={params?.reasoning_level ?? null}
 									onReasoningLevelChange={(level: ReasoningLevel) => {
 										params = { ...params, reasoning_level: level };

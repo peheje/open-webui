@@ -122,11 +122,7 @@ from open_webui.utils.misc import (
     calculate_sha256_string,
     sanitize_text_for_db,
 )
-from open_webui.utils.web_search_limits import (
-    cap_search_queries,
-    cap_unique_urls,
-    resolve_web_search_options,
-)
+from open_webui.utils.web_search_config import resolve_web_search_engine
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -449,7 +445,6 @@ class ProcessUrlForm(CollectionNameForm):
 class SearchForm(BaseModel):
     queries: list[str]
     engine: str | None = None
-    depth: str | None = None
 
 
 @router.get('/embedding')
@@ -2544,22 +2539,16 @@ async def process_web_search(request: Request, form_data: SearchForm, user=Depen
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
         )
 
-    search_options = resolve_web_search_options(
-        {'engine': form_data.engine, 'depth': form_data.depth},
+    search_engine = resolve_web_search_engine(
+        {'engine': form_data.engine},
         config.WEB_SEARCH_ENGINE,
     )
-    queries = cap_search_queries(form_data.queries, search_options['max_queries'])
-    if not queries:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ERROR_MESSAGES.DEFAULT('No valid web search queries supplied'),
-        )
 
     urls = []
     result_items = []
 
     try:
-        logging.debug(f'trying to web search with {search_options["engine"], queries}')
+        logging.debug(f'trying to web search with {search_engine, form_data.queries}')
 
         # Use semaphore to limit concurrent requests based on WEB_SEARCH_CONCURRENT_REQUESTS
         # 0 or None = unlimited (previous behavior), positive number = limited concurrency
@@ -2574,22 +2563,22 @@ async def process_web_search(request: Request, form_data: SearchForm, user=Depen
                 async with semaphore:
                     return await search_web(
                         request,
-                        search_options['engine'],
+                        search_engine,
                         query,
                         user,
                     )
 
-            search_tasks = [search_query_with_semaphore(query) for query in queries]
+            search_tasks = [search_query_with_semaphore(query) for query in form_data.queries]
         else:
             # Unlimited parallel execution
             search_tasks = [
                 search_web(
                     request,
-                    search_options['engine'],
+                    search_engine,
                     query,
                     user,
                 )
-                for query in queries
+                for query in form_data.queries
             ]
 
         search_results = await asyncio.gather(*search_tasks)
@@ -2601,8 +2590,7 @@ async def process_web_search(request: Request, form_data: SearchForm, user=Depen
                         result_items.append(item)
                         urls.append(item.link)
 
-        urls = cap_unique_urls(urls, search_options['max_sources'])
-        result_items = [item for item in result_items if item.link in urls]
+        urls = list(dict.fromkeys(urls))
         log.debug(f'urls: {urls}')
 
     except Exception as e:
@@ -2617,12 +2605,7 @@ async def process_web_search(request: Request, form_data: SearchForm, user=Depen
 
     try:
         if config.BYPASS_WEB_SEARCH_WEB_LOADER:
-            search_results = [
-                item
-                for result in search_results
-                for item in result
-                if result and item.link in urls
-            ]
+            search_results = [item for result in search_results for item in result if result]
 
             docs = [
                 Document(
@@ -2671,7 +2654,7 @@ async def process_web_search(request: Request, form_data: SearchForm, user=Depen
             }
         else:
             # Create a single collection for all documents
-            collection_name = f'web-search-{calculate_sha256_string("-".join(queries))}'[:63]
+            collection_name = f'web-search-{calculate_sha256_string("-".join(form_data.queries))}'[:63]
 
             try:
                 await run_in_threadpool(

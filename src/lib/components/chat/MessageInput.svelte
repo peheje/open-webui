@@ -169,7 +169,6 @@
 	export let imageGenerationEnabled = false;
 	export let webSearchEnabled = false;
 	export let webSearchEngine: 'brave' | 'serper' = 'brave';
-	export let webSearchDepth: 'quick' | 'normal' | 'deep' = 'normal';
 	export let reasoningLevel: ReasoningLevel | null = null;
 	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
 	export let codeInterpreterEnabled = false;
@@ -233,7 +232,6 @@
 		imageGenerationEnabled,
 		webSearchEnabled,
 		webSearchEngine,
-		webSearchDepth,
 		reasoningLevel: resolvedReasoningLevel,
 		codeInterpreterEnabled
 	});
@@ -2099,7 +2097,6 @@
 												bind:selectedFilterIds
 												bind:webSearchEnabled
 												bind:webSearchEngine
-												bind:webSearchDepth
 												bind:imageGenerationEnabled
 												bind:codeInterpreterEnabled
 												{onWebSearchToggle}
@@ -2274,7 +2271,7 @@
 
 											{#if webSearchEnabled}
 												<Tooltip
-													content={`${$i18n.t('Web Search')}: ${webSearchEngine} · ${webSearchDepth}`}
+													content={`${$i18n.t('Web Search')}: ${webSearchEngine}`}
 													placement="top"
 												>
 													<button
@@ -2290,11 +2287,7 @@
 													>
 														<GlobeAlt className="size-4" strokeWidth="1.75" />
 														<span class="max-w-24 truncate text-[11px] capitalize"
-															>{webSearchEngine} · {webSearchDepth === 'quick'
-																? 3
-																: webSearchDepth === 'deep'
-																	? 12
-																	: 6}</span
+															>{webSearchEngine}</span
 														>
 														<div class="hidden group-hover:block">
 															<XMark className="size-4" strokeWidth="1.75" />

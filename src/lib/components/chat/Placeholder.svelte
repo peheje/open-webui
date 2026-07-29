@@ -56,7 +56,6 @@
 	export let codeInterpreterEnabled = false;
 	export let webSearchEnabled = false;
 	export let webSearchEngine: 'brave' | 'serper' = 'brave';
-	export let webSearchDepth: 'quick' | 'normal' | 'deep' = 'normal';
 	export let reasoningLevel: ReasoningLevel | null = null;
 	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
 
@@ -232,7 +231,6 @@
 						bind:codeInterpreterEnabled
 						bind:webSearchEnabled
 						bind:webSearchEngine
-						bind:webSearchDepth
 						bind:reasoningLevel
 						{onReasoningLevelChange}
 						bind:atSelectedModel

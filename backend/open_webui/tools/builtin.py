@@ -54,6 +54,7 @@ from open_webui.events import EVENTS, publish_event
 from open_webui.socket.main import sio
 from open_webui.utils.notifications import notify_target
 from open_webui.utils.sanitize import sanitize_code
+from open_webui.utils.web_search_config import resolve_web_search_engine_from_features
 
 log = logging.getLogger(__name__)
 
@@ -277,6 +278,7 @@ async def search_web(
     count: Optional[int] = None,
     __request__: Request = None,
     __user__: dict = None,
+    __features__: dict = None,
 ) -> str:
     """
     Search the public web for information. Best for current events, external references,
@@ -290,7 +292,10 @@ async def search_web(
         return json.dumps({'error': 'Request context not available'})
 
     try:
-        engine = await Config.get('web.search.engine')
+        engine = resolve_web_search_engine_from_features(
+            __features__,
+            await Config.get('web.search.engine'),
+        )
         user = UserModel(**__user__) if __user__ else None
 
         configured = await Config.get('web.search.result_count')
