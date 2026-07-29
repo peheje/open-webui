@@ -10,6 +10,7 @@
 	export let ariaLabelledbyId = '';
 	export let ariaLabel = '';
 	export let tooltip = false;
+	export let activeColor: 'default' | 'sky' = 'default';
 
 	const i18n = getContext('i18n');
 	const dispatch = createEventDispatcher();
@@ -34,7 +35,9 @@
 		false)
 			? 'focus:outline focus:outline-2 focus:outline-gray-800 focus:dark:outline-gray-200'
 			: 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400 dark:focus-visible:outline-gray-500'} {state
-			? 'bg-gray-900 dark:bg-white'
+			? activeColor === 'sky'
+				? 'bg-sky-500 dark:bg-sky-400'
+				: 'bg-gray-900 dark:bg-white'
 			: 'bg-gray-300 dark:bg-gray-700'}"
 		onCheckedChange={async () => {
 			await tick();

@@ -462,7 +462,7 @@
 						}}
 					>
 						<span>{$i18n.t('Enabled')}</span>
-						<Switch state={webSearchEnabled} />
+						<Switch state={webSearchEnabled} activeColor="sky" />
 					</button>
 
 					<div class="px-2">

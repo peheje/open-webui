@@ -306,17 +306,10 @@
 	let webSearchConfirmed = false;
 
 	$: {
-		const currentModels = atSelectedModel?.id ? [atSelectedModel.id] : selectedModels;
-		const allModelsSupportWebSearch =
-			currentModels.filter(
-				(model) => $models.find((m) => m.id === model)?.info?.meta?.capabilities?.web_search ?? true
-			).length === currentModels.length;
-
 		webSearchActive = Boolean(
 			$config?.features?.enable_web_search &&
 			($user?.role === 'admin' || $user?.permissions?.features?.web_search) &&
-			(webSearchEnabled ||
-				(allModelsSupportWebSearch && ($settings?.webSearch ?? false) === 'always'))
+			webSearchEnabled
 		);
 	}
 
@@ -740,6 +733,10 @@
 
 			const model = atSelectedModel ?? $models.find((m) => m.id === selectedModels[0]);
 			if (model) {
+				// "Always" is the default for a new chat, not an override of
+				// the per-chat toggle. This lets users explicitly turn search off.
+				webSearchEnabled = ($settings?.webSearch ?? false) === 'always';
+
 				// Set Default Tools
 				if (model?.info?.meta?.toolIds) {
 					const defaultIds = [
@@ -809,7 +806,8 @@
 						$config?.features?.enable_web_search &&
 						($user?.role === 'admin' || $user?.permissions?.features?.web_search)
 					) {
-						webSearchEnabled = model.info.meta.defaultFeatureIds.includes('web_search');
+						webSearchEnabled =
+							webSearchEnabled || model.info.meta.defaultFeatureIds.includes('web_search');
 					}
 
 					if (

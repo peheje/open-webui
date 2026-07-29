@@ -2269,29 +2269,27 @@
 												</Tooltip>
 											{/if}
 
-											{#if webSearchEnabled}
+											{#if showWebSearchButton}
 												<Tooltip
-													content={`${$i18n.t('Web Search')}: ${webSearchEngine}`}
+													content={`${$i18n.t('Web Search')}: ${webSearchEnabled ? $i18n.t('Enabled') : $i18n.t('Disabled')} · ${webSearchEngine}. ${$i18n.t('Tap to toggle')}.`}
 													placement="top"
 												>
 													<button
 														on:click|preventDefault={() => {
-															webSearchEnabled = false;
-															onWebSearchToggle(false);
+															webSearchEnabled = !webSearchEnabled;
+															onWebSearchToggle(webSearchEnabled);
 														}}
 														type="button"
-														class="group p-[6px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden {webSearchEnabled ||
-														($settings?.webSearch ?? false) === 'always'
-															? ' text-sky-500 dark:text-sky-300 bg-sky-50 hover:bg-sky-100 dark:bg-sky-400/10 dark:hover:bg-sky-600/10 border border-sky-200/40 dark:border-sky-500/20'
-															: 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 '}"
+														aria-pressed={webSearchEnabled}
+														aria-label={`${$i18n.t('Web Search')}: ${webSearchEnabled ? $i18n.t('Enabled') : $i18n.t('Disabled')}`}
+														class="group p-[6px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden border {webSearchEnabled
+															? 'text-sky-700 dark:text-sky-200 bg-sky-100 hover:bg-sky-200 dark:bg-sky-400/20 dark:hover:bg-sky-400/30 border-sky-300/60 dark:border-sky-400/30'
+															: 'text-gray-500 dark:text-gray-400 bg-gray-100/70 hover:bg-gray-200/70 dark:bg-gray-800/70 dark:hover:bg-gray-700/70 border-gray-200/70 dark:border-gray-700'}"
 													>
 														<GlobeAlt className="size-4" strokeWidth="1.75" />
 														<span class="max-w-24 truncate text-[11px] capitalize"
-															>{webSearchEngine}</span
+															>{webSearchEnabled ? webSearchEngine : $i18n.t('Off')}</span
 														>
-														<div class="hidden group-hover:block">
-															<XMark className="size-4" strokeWidth="1.75" />
-														</div>
 													</button>
 												</Tooltip>
 											{/if}
