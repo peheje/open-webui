@@ -3,8 +3,22 @@ import { browser, dev } from '$app/environment';
 
 export const APP_NAME = 'Open WebUI';
 
-export const WEBUI_HOSTNAME = browser ? (dev ? `${location.hostname}:8080` : ``) : '';
-export const WEBUI_BASE_URL = browser ? (dev ? `http://${WEBUI_HOSTNAME}` : ``) : ``;
+const useDevProxy = import.meta.env.VITE_WEBUI_DEV_PROXY === 'true';
+
+export const WEBUI_HOSTNAME = browser
+	? dev
+		? useDevProxy
+			? location.host
+			: `${location.hostname}:8080`
+		: ``
+	: '';
+export const WEBUI_BASE_URL = browser
+	? dev
+		? useDevProxy
+			? ``
+			: `http://${WEBUI_HOSTNAME}`
+		: ``
+	: ``;
 export const WEBUI_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1`;
 
 export const OLLAMA_API_BASE_URL = `${WEBUI_BASE_URL}/ollama`;
