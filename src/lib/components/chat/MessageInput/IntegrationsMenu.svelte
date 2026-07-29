@@ -462,7 +462,27 @@
 						}}
 					>
 						<span>{$i18n.t('Enabled')}</span>
-						<Switch state={webSearchEnabled} activeColor="sky" />
+						<span class="flex items-center gap-1.5">
+							<span
+								class="text-[11px] font-medium {webSearchEnabled
+									? 'text-sky-700 dark:text-sky-300'
+									: 'text-gray-500 dark:text-gray-400'}"
+							>
+								{webSearchEnabled ? $i18n.t('On') : $i18n.t('Off')}
+							</span>
+							<span
+								aria-hidden="true"
+								class="relative h-4 w-7 shrink-0 rounded-full transition-colors duration-150 {webSearchEnabled
+									? 'bg-sky-500 dark:bg-sky-400'
+									: 'bg-gray-300 dark:bg-gray-700'}"
+							>
+								<span
+									class="absolute top-0.5 block h-3 w-3 rounded-full bg-white shadow-sm transition-all duration-150 {webSearchEnabled
+										? 'left-3.5 dark:bg-white'
+										: 'left-0.5 dark:bg-gray-400'}"
+								></span>
+							</span>
+						</span>
 					</button>
 
 					<div class="px-2">
