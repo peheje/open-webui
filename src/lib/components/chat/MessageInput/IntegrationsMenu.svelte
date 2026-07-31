@@ -80,6 +80,63 @@
 	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
 	export let closeOnOutsideClick = true;
 
+	type OpenRouterSearchDepth = 'quick' | 'balanced' | 'deep';
+	const OPENROUTER_SEARCH_DEPTHS: {
+		id: OpenRouterSearchDepth;
+		label: string;
+		maxUses: number;
+		maxResults: number;
+		maxTotalResults: number;
+		context: OpenRouterSearchContextSize;
+		description: string;
+	}[] = [
+		{
+			id: 'quick',
+			label: 'Quick',
+			maxUses: 1,
+			maxResults: 3,
+			maxTotalResults: 3,
+			context: 'low',
+			description: 'One focused search with up to 3 sources.'
+		},
+		{
+			id: 'balanced',
+			label: 'Balanced',
+			maxUses: 3,
+			maxResults: 5,
+			maxTotalResults: 12,
+			context: 'medium',
+			description: 'Up to 3 searches and 12 sources for normal questions.'
+		},
+		{
+			id: 'deep',
+			label: 'Deep',
+			maxUses: 5,
+			maxResults: 8,
+			maxTotalResults: 30,
+			context: 'high',
+			description: 'Up to 5 searches and 30 sources for research.'
+		}
+	];
+	let webSearchDepth: OpenRouterSearchDepth = 'balanced';
+	$: webSearchDepth =
+		webSearchMaxUses <= 1 && webSearchMaxTotalResults <= 3 && webSearchContextSize === 'low'
+			? 'quick'
+			: webSearchMaxUses >= 5 ||
+				  webSearchMaxTotalResults >= 25 ||
+				  webSearchContextSize === 'high'
+				? 'deep'
+				: 'balanced';
+
+	const applyWebSearchDepth = (depth: OpenRouterSearchDepth) => {
+		const preset = OPENROUTER_SEARCH_DEPTHS.find((item) => item.id === depth);
+		if (!preset) return;
+		webSearchMaxUses = preset.maxUses;
+		webSearchMaxResults = preset.maxResults;
+		webSearchMaxTotalResults = preset.maxTotalResults;
+		webSearchContextSize = preset.context;
+	};
+
 	let show = false;
 	let tab = '';
 
@@ -538,48 +595,36 @@
 					</div>
 
 					{#if openRouterControl}
-						<div class="grid grid-cols-2 gap-2 px-2">
-							<label class="text-[11px] text-gray-500">
-								<span class="mb-1 block font-medium uppercase tracking-wide">{$i18n.t('Max searches')}</span>
-								<input
-									type="number"
-									min="1"
-									max="30"
-									bind:value={webSearchMaxUses}
-									class="w-full rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-[12px] text-gray-800 outline-hidden focus:border-sky-400 dark:border-gray-700 dark:text-gray-100"
-								/>
-							</label>
-							<label class="text-[11px] text-gray-500">
-								<span class="mb-1 block font-medium uppercase tracking-wide">{$i18n.t('Results/search')}</span>
-								<input
-									type="number"
-									min="1"
-									max={webSearchEngine === 'perplexity' ? 20 : 25}
-									bind:value={webSearchMaxResults}
-									class="w-full rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-[12px] text-gray-800 outline-hidden focus:border-sky-400 dark:border-gray-700 dark:text-gray-100"
-								/>
-							</label>
-							<label class="text-[11px] text-gray-500">
-								<span class="mb-1 block font-medium uppercase tracking-wide">{$i18n.t('Total results')}</span>
-								<input
-									type="number"
-									min="1"
-									max="250"
-									bind:value={webSearchMaxTotalResults}
-									class="w-full rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-[12px] text-gray-800 outline-hidden focus:border-sky-400 dark:border-gray-700 dark:text-gray-100"
-								/>
-							</label>
-							<label class="text-[11px] text-gray-500">
-								<span class="mb-1 block font-medium uppercase tracking-wide">{$i18n.t('Context')}</span>
-								<select
-									bind:value={webSearchContextSize}
-									class="w-full rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-[12px] text-gray-800 outline-hidden focus:border-sky-400 dark:border-gray-700 dark:text-gray-100"
-								>
-									<option value="low">{$i18n.t('Low')}</option>
-									<option value="medium">{$i18n.t('Medium')}</option>
-									<option value="high">{$i18n.t('High')}</option>
-								</select>
-							</label>
+						<div class="px-2">
+							<div class="mb-1 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+								{$i18n.t('Search depth')}
+							</div>
+							<div class="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+								{#each OPENROUTER_SEARCH_DEPTHS as depth (depth.id)}
+									<button
+										type="button"
+										class="relative overflow-hidden rounded-lg border border-transparent px-1 py-1 text-[11px] {webSearchDepth ===
+										depth.id
+											? 'font-semibold text-gray-900 dark:text-white'
+											: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
+										aria-pressed={webSearchDepth === depth.id}
+										on:click={() => applyWebSearchDepth(depth.id)}
+									>
+										{#if webSearchDepth === depth.id}
+											<span
+												aria-hidden="true"
+												class="pointer-events-none absolute inset-0 rounded-lg border border-sky-300 bg-sky-100 dark:border-sky-700 dark:bg-sky-900/70"
+											></span>
+										{/if}
+										<span class="relative z-10">{$i18n.t(depth.label)}</span>
+									</button>
+								{/each}
+							</div>
+							<p class="mt-1.5 text-[10px] leading-4 text-gray-500">
+								{$i18n.t(
+									OPENROUTER_SEARCH_DEPTHS.find((depth) => depth.id === webSearchDepth)?.description ?? ''
+								)}
+							</p>
 						</div>
 
 						<div class="px-2">
