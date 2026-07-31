@@ -145,6 +145,55 @@ def _apply_prompt_caching(
         form_data.pop("cache_control", None)
 
 
+def _relax_external_search_provider_routing(form_data: dict) -> None:
+    """Keep the provider allow-list while relaxing server-tool compatibility.
+
+    Curated model parameters still live under ``params.custom_params`` while
+    middleware is assembling tools. Direct API callers may already have a
+    top-level provider object, so handle both forms.
+    """
+
+    providers: list[dict] = []
+    top_level = form_data.get("provider")
+    if isinstance(top_level, dict):
+        providers.append(top_level)
+
+    params = form_data.get("params")
+    custom_params = params.get("custom_params") if isinstance(params, dict) else None
+    nested = custom_params.get("provider") if isinstance(custom_params, dict) else None
+    if isinstance(nested, dict):
+        providers.append(nested)
+
+    for provider in providers:
+        provider.pop("require_parameters", None)
+
+
+def finalize_openrouter_request(form_data: dict) -> None:
+    """Apply compatibility changes after model parameters reach the payload.
+
+    Open WebUI promotes curated model parameters more than once. This final
+    provider-boundary pass prevents the strict flag from being reintroduced
+    after the server tool was assembled.
+    """
+
+    tools = form_data.get("tools")
+    if not isinstance(tools, list):
+        return
+    search_tool = next(
+        (
+            tool
+            for tool in tools
+            if isinstance(tool, dict) and tool.get("type") == "openrouter:web_search"
+        ),
+        None,
+    )
+    if not search_tool:
+        return
+    parameters = _as_dict(search_tool.get("parameters"))
+    if parameters.get("engine", "auto") not in {"auto", "native"}:
+        _relax_external_search_provider_routing(form_data)
+
+
 def apply_openrouter_request(
     form_data: dict,
     features: Any,
@@ -170,6 +219,14 @@ def apply_openrouter_request(
     search_parameters = resolve_openrouter_search_parameters(
         features.get("web_search_config")
     )
+    # OpenRouter's external search engines currently fail before provider
+    # selection when strict parameter compatibility is requested. Keep the
+    # official-provider allow-list and disabled fallbacks, but let the gateway
+    # own its server-tool parameter for non-native engines. Native search can
+    # retain the stricter compatibility filter.
+    if search_parameters["engine"] not in {"auto", "native"}:
+        _relax_external_search_provider_routing(form_data)
+
     web_search_tool = {
         "type": "openrouter:web_search",
         "parameters": search_parameters,

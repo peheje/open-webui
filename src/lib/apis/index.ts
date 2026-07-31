@@ -1773,6 +1773,11 @@ export interface ModelMeta {
 			>
 		>;
 	};
+	openrouter?: {
+		official_provider: string;
+		web_search?: boolean;
+		cache_mode?: 'smart' | 'long' | 'provider_default';
+	};
 }
 
 export interface ModelParams {}

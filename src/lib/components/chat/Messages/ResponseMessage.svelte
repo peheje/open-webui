@@ -65,6 +65,10 @@
 	import FullHeightIframe from '$lib/components/common/FullHeightIframe.svelte';
 	import OutputEditView from './OutputEditView.svelte';
 	import { getOutputText, replaceOutputMessageText, type OutputItem } from './structuredOutput';
+	import {
+		getOpenRouterSessionId,
+		OPENROUTER_SESSIONS_URL
+	} from '$lib/openrouter';
 
 	interface MessageType {
 		id: string;
@@ -89,6 +93,7 @@
 			query?: string;
 		};
 		done: boolean;
+		usage?: unknown;
 		error?: boolean | { content: string };
 		sources?: string[];
 		code_executions?: {
@@ -179,6 +184,17 @@
 
 	let model = null;
 	$: model = $models.find((m) => m.id === message.model);
+	let openRouterSessionSource = '';
+	let openRouterSessionId: string | null = null;
+	$: openRouterSessionSource = model?.info?.meta?.openrouter && chatId ? chatId : '';
+	$: if (openRouterSessionSource) {
+		const source = openRouterSessionSource;
+		getOpenRouterSessionId(source).then((value) => {
+			if (openRouterSessionSource === source) openRouterSessionId = value;
+		});
+	} else {
+		openRouterSessionId = null;
+	}
 
 	$: statusEntries = message?.statusHistory ?? [...(message?.status ? [message?.status] : [])];
 	$: hasVisibleStatus =
@@ -1176,6 +1192,30 @@
 												</svg>
 											{/if}
 										</button>
+									</Tooltip>
+								{/if}
+
+								{#if openRouterSessionId}
+									<Tooltip
+										content={`Open OpenRouter Sessions and copy ${openRouterSessionId}`}
+										placement="bottom"
+									>
+										<a
+											aria-label="Open OpenRouter session logs"
+											href={OPENROUTER_SESSIONS_URL}
+											target="_blank"
+											rel="noreferrer"
+											class="{isLastMessage || ($settings?.highContrastMode ?? false)
+												? 'visible'
+												: 'invisible group-hover:visible'} px-1.5 py-1 text-[11px] font-semibold hover:bg-black/5 dark:hover:bg-white/5 rounded-lg dark:hover:text-white hover:text-black transition"
+											on:click={() => {
+												void _copyToClipboard(openRouterSessionId).then((copied: boolean) => {
+													if (copied) toast.success('OpenRouter session ID copied');
+												});
+											}}
+										>
+											OR
+										</a>
 									</Tooltip>
 								{/if}
 

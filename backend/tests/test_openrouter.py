@@ -1,5 +1,6 @@
 from open_webui.utils.openrouter import (
     apply_openrouter_request,
+    finalize_openrouter_request,
     is_openrouter_model,
     resolve_openrouter_search_parameters,
     should_use_openrouter_search,
@@ -84,6 +85,20 @@ def test_openrouter_request_adds_agentic_search_and_sticky_session():
     form_data = {
         "tools": [{"type": "function", "function": {"name": "calculator"}}],
         "max_tool_calls": 8,
+        "provider": {
+            "only": ["xai"],
+            "allow_fallbacks": False,
+            "require_parameters": True,
+        },
+        "params": {
+            "custom_params": {
+                "provider": {
+                    "only": ["xai"],
+                    "allow_fallbacks": False,
+                    "require_parameters": True,
+                }
+            }
+        },
     }
     injected = apply_openrouter_request(
         form_data,
@@ -104,6 +119,14 @@ def test_openrouter_request_adds_agentic_search_and_sticky_session():
     assert form_data["session_id"].startswith("owui-")
     assert form_data["session_id"] != "chat-123"
     assert form_data["max_tool_calls"] == 3
+    assert form_data["provider"] == {
+        "only": ["xai"],
+        "allow_fallbacks": False,
+    }
+    assert form_data["params"]["custom_params"]["provider"] == {
+        "only": ["xai"],
+        "allow_fallbacks": False,
+    }
     assert form_data["tools"] == [
         {"type": "function", "function": {"name": "calculator"}},
         {
@@ -119,7 +142,23 @@ def test_openrouter_request_adds_agentic_search_and_sticky_session():
 
 
 def test_openrouter_search_tool_is_replaced_not_duplicated():
-    form_data = {"tools": [{"type": "openrouter:web_search"}]}
+    form_data = {
+        "tools": [{"type": "openrouter:web_search"}],
+        "provider": {
+            "only": ["xai"],
+            "allow_fallbacks": False,
+            "require_parameters": True,
+        },
+        "params": {
+            "custom_params": {
+                "provider": {
+                    "only": ["xai"],
+                    "allow_fallbacks": False,
+                    "require_parameters": True,
+                }
+            }
+        },
+    }
     apply_openrouter_request(
         form_data,
         {"web_search": True, "web_search_config": {"engine": "native"}},
@@ -132,6 +171,34 @@ def test_openrouter_search_tool_is_replaced_not_duplicated():
             "parameters": {"engine": "native"},
         }
     ]
+    assert form_data["provider"]["require_parameters"] is True
+    assert (
+        form_data["params"]["custom_params"]["provider"]["require_parameters"]
+        is True
+    )
+
+
+def test_provider_boundary_relaxes_external_search_after_model_params_reapply():
+    payload = {
+        "tools": [
+            {
+                "type": "openrouter:web_search",
+                "parameters": {"engine": "exa", "max_uses": 1},
+            }
+        ],
+        "provider": {
+            "only": ["openai"],
+            "allow_fallbacks": False,
+            "require_parameters": True,
+        },
+    }
+
+    finalize_openrouter_request(payload)
+
+    assert payload["provider"] == {
+        "only": ["openai"],
+        "allow_fallbacks": False,
+    }
 
 
 def test_anthropic_smart_and_long_caching_are_explicit():
@@ -250,3 +317,33 @@ def test_openrouter_search_and_prompt_cache_usage_is_accumulated():
     assert usage["cache_creation_input_tokens"] == 80
     assert usage["cache_read_input_tokens"] == 40
     assert usage["server_tool_use"] == {"web_search_requests": 3}
+
+
+def test_openrouter_server_tool_usage_details_are_normalized_and_accumulated():
+    usage = merge_usage(
+        {
+            "prompt_tokens": 100,
+            "completion_tokens": 10,
+            "server_tool_use_details": {
+                "web_search_requests": 1,
+                "tool_calls_executed": 1,
+            },
+        },
+        {
+            "prompt_tokens": 50,
+            "completion_tokens": 5,
+            "server_tool_use_details": {
+                "web_search_requests": 2,
+                "tool_calls_executed": 2,
+            },
+        },
+    )
+
+    assert usage["server_tool_use"] == {
+        "web_search_requests": 3,
+        "tool_calls_executed": 3,
+    }
+    assert usage["server_tool_use_details"] == {
+        "web_search_requests": 3,
+        "tool_calls_executed": 3,
+    }

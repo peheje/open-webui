@@ -44,6 +44,14 @@ def normalize_usage(usage: dict) -> dict:
 
     # Add standardized fields to original data
     result = dict(usage)
+    # OpenRouter's server-tool API currently returns the documented search
+    # counters as ``server_tool_use_details``. Preserve the provider field and
+    # also expose the stable normalized spelling consumed by OWUI.
+    if (
+        not isinstance(result.get('server_tool_use'), dict)
+        and isinstance(result.get('server_tool_use_details'), dict)
+    ):
+        result['server_tool_use'] = dict(result['server_tool_use_details'])
     result['input_tokens'] = int(input_tokens)
     result['output_tokens'] = int(output_tokens)
     result['total_tokens'] = int(total_tokens)
@@ -76,6 +84,7 @@ USAGE_DETAIL_KEYS = {
     'input_tokens_details',
     'output_tokens_details',
     'server_tool_use',
+    'server_tool_use_details',
 }
 
 

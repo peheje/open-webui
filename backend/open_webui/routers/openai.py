@@ -48,6 +48,7 @@ from open_webui.utils.misc import (
     convert_logit_bias_input_to_json,
     stream_chunks_handler,
 )
+from open_webui.utils.openrouter import finalize_openrouter_request
 from open_webui.utils.payload import (
     apply_model_params_to_body_openai,
     drop_empty_tools,
@@ -1250,6 +1251,11 @@ async def generate_chat_completion(
         await check_model_access(user, model_info, bypass_filter)
     else:
         await check_model_access(user, None, bypass_filter)
+
+    # Curated model parameters are promoted at this provider boundary and can
+    # reintroduce strict routing after middleware added an OpenRouter server
+    # tool. Reconcile the final payload before it is sent upstream.
+    finalize_openrouter_request(payload)
 
     # Check if model is already in app state cache to avoid expensive get_all_models() call
     models = request.app.state.OPENAI_MODELS

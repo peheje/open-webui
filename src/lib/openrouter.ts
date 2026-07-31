@@ -1,3 +1,5 @@
+import type { Model } from '$lib/stores';
+
 export const LOCAL_SEARCH_ENGINES = ['brave', 'serper'] as const;
 export const OPENROUTER_SEARCH_ENGINES = [
 	'auto',
@@ -36,3 +38,15 @@ export const isOpenRouterSearchEngine = (
 
 export const isLocalSearchEngine = (engine: WebSearchEngine): engine is LocalSearchEngine =>
 	LOCAL_SEARCH_ENGINES.includes(engine as LocalSearchEngine);
+
+export const OPENROUTER_SESSIONS_URL = 'https://openrouter.ai/logs?tab=sessions';
+
+export const getOpenRouterSessionId = async (chatId: string): Promise<string | null> => {
+	if (!chatId || !globalThis.crypto?.subtle) return null;
+	const bytes = new TextEncoder().encode(chatId);
+	const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+	const hex = Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join(
+		''
+	);
+	return `owui-${hex.slice(0, 40)}`;
+};
