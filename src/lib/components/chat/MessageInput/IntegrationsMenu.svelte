@@ -37,6 +37,14 @@
 	import LinkSlash from '$lib/components/icons/LinkSlash.svelte';
 	import LightBulb from '$lib/components/icons/LightBulb.svelte';
 	import { REASONING_LEVEL_IDS, type ReasoningControl, type ReasoningLevel } from '$lib/reasoning';
+	import {
+		LOCAL_SEARCH_ENGINES,
+		OPENROUTER_SEARCH_ENGINES,
+		type OpenRouterCacheMode,
+		type OpenRouterControl,
+		type OpenRouterSearchContextSize,
+		type WebSearchEngine
+	} from '$lib/openrouter';
 
 	const i18n = getContext('i18n');
 
@@ -52,7 +60,13 @@
 
 	export let showWebSearchButton = false;
 	export let webSearchEnabled = false;
-	export let webSearchEngine: 'brave' | 'serper' = 'brave';
+	export let webSearchEngine: WebSearchEngine = 'brave';
+	export let webSearchMaxUses = 3;
+	export let webSearchMaxResults = 5;
+	export let webSearchMaxTotalResults = 12;
+	export let webSearchContextSize: OpenRouterSearchContextSize = 'medium';
+	export let openRouterCacheMode: OpenRouterCacheMode = 'smart';
+	export let openRouterControl: OpenRouterControl | null = null;
 	export let reasoningControl: ReasoningControl | null = null;
 	export let reasoningLevel: ReasoningLevel | null = null;
 	export let showImageGenerationButton = false;
@@ -496,9 +510,10 @@
 						<div class="mb-1 text-[11px] font-medium uppercase tracking-wide text-gray-500">
 							{$i18n.t('Search provider')}
 						</div>
-						<!-- Native models decide how many searches they need; this only selects the provider. -->
-						<div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
-							{#each ['brave', 'serper'] as engine (engine)}
+						<div
+							class="grid {openRouterControl ? 'grid-cols-3' : 'grid-cols-2'} gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800"
+						>
+							{#each openRouterControl ? OPENROUTER_SEARCH_ENGINES : LOCAL_SEARCH_ENGINES as engine (engine)}
 								<button
 									type="button"
 									class="web-search-choice relative overflow-hidden rounded-lg border border-transparent px-2 py-1 text-[12px] capitalize {webSearchEngine ===
@@ -507,7 +522,7 @@
 										: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
 									aria-pressed={webSearchEngine === engine}
 									on:click={() => {
-										webSearchEngine = engine as 'brave' | 'serper';
+										webSearchEngine = engine;
 									}}
 								>
 									{#if webSearchEngine === engine}
@@ -521,6 +536,89 @@
 							{/each}
 						</div>
 					</div>
+
+					{#if openRouterControl}
+						<div class="grid grid-cols-2 gap-2 px-2">
+							<label class="text-[11px] text-gray-500">
+								<span class="mb-1 block font-medium uppercase tracking-wide">{$i18n.t('Max searches')}</span>
+								<input
+									type="number"
+									min="1"
+									max="30"
+									bind:value={webSearchMaxUses}
+									class="w-full rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-[12px] text-gray-800 outline-hidden focus:border-sky-400 dark:border-gray-700 dark:text-gray-100"
+								/>
+							</label>
+							<label class="text-[11px] text-gray-500">
+								<span class="mb-1 block font-medium uppercase tracking-wide">{$i18n.t('Results/search')}</span>
+								<input
+									type="number"
+									min="1"
+									max={webSearchEngine === 'perplexity' ? 20 : 25}
+									bind:value={webSearchMaxResults}
+									class="w-full rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-[12px] text-gray-800 outline-hidden focus:border-sky-400 dark:border-gray-700 dark:text-gray-100"
+								/>
+							</label>
+							<label class="text-[11px] text-gray-500">
+								<span class="mb-1 block font-medium uppercase tracking-wide">{$i18n.t('Total results')}</span>
+								<input
+									type="number"
+									min="1"
+									max="250"
+									bind:value={webSearchMaxTotalResults}
+									class="w-full rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-[12px] text-gray-800 outline-hidden focus:border-sky-400 dark:border-gray-700 dark:text-gray-100"
+								/>
+							</label>
+							<label class="text-[11px] text-gray-500">
+								<span class="mb-1 block font-medium uppercase tracking-wide">{$i18n.t('Context')}</span>
+								<select
+									bind:value={webSearchContextSize}
+									class="w-full rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-[12px] text-gray-800 outline-hidden focus:border-sky-400 dark:border-gray-700 dark:text-gray-100"
+								>
+									<option value="low">{$i18n.t('Low')}</option>
+									<option value="medium">{$i18n.t('Medium')}</option>
+									<option value="high">{$i18n.t('High')}</option>
+								</select>
+							</label>
+						</div>
+
+						<div class="px-2">
+							<div class="mb-1 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+								{$i18n.t('Prompt cache')}
+							</div>
+							<div class="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+								{#each [
+									{ id: 'smart', label: $i18n.t('Smart') },
+									{ id: 'long', label: '1h' },
+									{ id: 'provider_default', label: $i18n.t('Provider') }
+								] as cache (cache.id)}
+									<button
+										type="button"
+										class="relative overflow-hidden rounded-lg border border-transparent px-1 py-1 text-[11px] {openRouterCacheMode ===
+										cache.id
+											? 'font-semibold text-gray-900 dark:text-white'
+											: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
+										on:click={() => {
+											openRouterCacheMode = cache.id as OpenRouterCacheMode;
+										}}
+									>
+										{#if openRouterCacheMode === cache.id}
+											<span
+												aria-hidden="true"
+												class="pointer-events-none absolute inset-0 rounded-lg border border-sky-300 bg-sky-100 dark:border-sky-700 dark:bg-sky-900/70"
+											></span>
+										{/if}
+										<span class="relative z-10">{cache.label}</span>
+									</button>
+								{/each}
+							</div>
+							<p class="mt-1.5 text-[10px] leading-4 text-gray-500">
+								{openRouterControl.official_provider === 'anthropic'
+									? $i18n.t('Smart uses a five-minute Claude prompt cache; 1h costs more to write but suits long sessions.')
+									: $i18n.t('This provider manages prompt caching automatically. Sticky per-chat routing remains enabled.')}
+							</p>
+						</div>
+					{/if}
 
 				</div>
 			{:else if tab === 'tools' && tools}

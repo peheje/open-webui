@@ -67,6 +67,11 @@
 	} from '$lib/utils';
 	import { AudioQueue } from '$lib/utils/audio';
 	import type { ReasoningLevel } from '$lib/reasoning';
+	import type {
+		OpenRouterCacheMode,
+		OpenRouterSearchContextSize,
+		WebSearchEngine
+	} from '$lib/openrouter';
 	import { getOutputText } from './Messages/structuredOutput';
 
 	import {
@@ -298,7 +303,12 @@
 
 	let imageGenerationEnabled = false;
 	let webSearchEnabled = false;
-	let webSearchEngine: 'brave' | 'serper' = 'brave';
+	let webSearchEngine: WebSearchEngine = 'brave';
+	let webSearchMaxUses = 3;
+	let webSearchMaxResults = 5;
+	let webSearchMaxTotalResults = 12;
+	let webSearchContextSize: OpenRouterSearchContextSize = 'medium';
+	let openRouterCacheMode: OpenRouterCacheMode = 'smart';
 	let codeInterpreterEnabled = false;
 	let webSearchActive = false;
 	let showWebSearchConfirm = false;
@@ -533,6 +543,11 @@
 		selectedFilterIds = [];
 		webSearchEnabled = false;
 		webSearchEngine = 'brave';
+		webSearchMaxUses = 3;
+		webSearchMaxResults = 5;
+		webSearchMaxTotalResults = 12;
+		webSearchContextSize = 'medium';
+		openRouterCacheMode = 'smart';
 		imageGenerationEnabled = false;
 
 		const storageChatInput = sessionStorage.getItem(
@@ -573,6 +588,11 @@
 						selectedFilterIds = input.selectedFilterIds;
 						webSearchEnabled = input.webSearchEnabled;
 						webSearchEngine = input.webSearchEngine ?? 'brave';
+						webSearchMaxUses = input.webSearchMaxUses ?? 3;
+						webSearchMaxResults = input.webSearchMaxResults ?? 5;
+						webSearchMaxTotalResults = input.webSearchMaxTotalResults ?? 12;
+						webSearchContextSize = input.webSearchContextSize ?? 'medium';
+						openRouterCacheMode = input.openRouterCacheMode ?? 'smart';
 						if (input.reasoningLevel) {
 							params = { ...params, reasoning_level: input.reasoningLevel };
 						}
@@ -625,6 +645,11 @@
 		selectedFilterIds = [];
 		webSearchEnabled = false;
 		webSearchEngine = 'brave';
+		webSearchMaxUses = 3;
+		webSearchMaxResults = 5;
+		webSearchMaxTotalResults = 12;
+		webSearchContextSize = 'medium';
+		openRouterCacheMode = 'smart';
 		imageGenerationEnabled = false;
 		codeInterpreterEnabled = false;
 		prompt = '';
@@ -1335,6 +1360,11 @@
 				selectedFilterIds = [];
 				webSearchEnabled = false;
 				webSearchEngine = 'brave';
+				webSearchMaxUses = 3;
+				webSearchMaxResults = 5;
+				webSearchMaxTotalResults = 12;
+				webSearchContextSize = 'medium';
+				openRouterCacheMode = 'smart';
 				imageGenerationEnabled = false;
 				codeInterpreterEnabled = false;
 
@@ -1349,6 +1379,11 @@
 						selectedFilterIds = input.selectedFilterIds;
 						webSearchEnabled = input.webSearchEnabled;
 						webSearchEngine = input.webSearchEngine ?? 'brave';
+						webSearchMaxUses = input.webSearchMaxUses ?? 3;
+						webSearchMaxResults = input.webSearchMaxResults ?? 5;
+						webSearchMaxTotalResults = input.webSearchMaxTotalResults ?? 12;
+						webSearchContextSize = input.webSearchContextSize ?? 'medium';
+						openRouterCacheMode = input.openRouterCacheMode ?? 'smart';
 						if (input.reasoningLevel) {
 							params = { ...params, reasoning_level: input.reasoningLevel };
 						}
@@ -2929,7 +2964,14 @@
 						: false,
 				web_search: webSearchActive,
 				web_search_config: {
-					engine: webSearchEngine
+					engine: webSearchEngine,
+					max_uses: webSearchMaxUses,
+					max_results: webSearchMaxResults,
+					max_total_results: webSearchMaxTotalResults,
+					search_context_size: webSearchContextSize
+				},
+				openrouter_cache_config: {
+					mode: openRouterCacheMode
 				}
 			};
 
@@ -3939,6 +3981,11 @@
 										{pendingOAuthTools}
 										bind:webSearchEnabled
 										bind:webSearchEngine
+										bind:webSearchMaxUses
+										bind:webSearchMaxResults
+										bind:webSearchMaxTotalResults
+										bind:webSearchContextSize
+										bind:openRouterCacheMode
 										reasoningLevel={params?.reasoning_level ?? null}
 										onReasoningLevelChange={(level: ReasoningLevel) => {
 											params = { ...params, reasoning_level: level };
@@ -4063,6 +4110,11 @@
 										{pendingOAuthTools}
 										bind:webSearchEnabled
 										bind:webSearchEngine
+										bind:webSearchMaxUses
+										bind:webSearchMaxResults
+										bind:webSearchMaxTotalResults
+										bind:webSearchContextSize
+										bind:openRouterCacheMode
 										reasoningLevel={params?.reasoning_level ?? null}
 										onReasoningLevelChange={(level: ReasoningLevel) => {
 											params = { ...params, reasoning_level: level };
@@ -4114,6 +4166,11 @@
 									bind:codeInterpreterEnabled
 									bind:webSearchEnabled
 									bind:webSearchEngine
+									bind:webSearchMaxUses
+									bind:webSearchMaxResults
+									bind:webSearchMaxTotalResults
+									bind:webSearchContextSize
+									bind:openRouterCacheMode
 									reasoningLevel={params?.reasoning_level ?? null}
 									onReasoningLevelChange={(level: ReasoningLevel) => {
 										params = { ...params, reasoning_level: level };

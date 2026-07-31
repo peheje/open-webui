@@ -28,6 +28,11 @@
 	import FolderPlaceholder from './Placeholder/FolderPlaceholder.svelte';
 	import FolderTitle from './Placeholder/FolderTitle.svelte';
 	import type { ReasoningLevel } from '$lib/reasoning';
+	import type {
+		OpenRouterCacheMode,
+		OpenRouterSearchContextSize,
+		WebSearchEngine
+	} from '$lib/openrouter';
 
 	const i18n = getContext('i18n');
 
@@ -55,7 +60,12 @@
 	export let imageGenerationEnabled = false;
 	export let codeInterpreterEnabled = false;
 	export let webSearchEnabled = false;
-	export let webSearchEngine: 'brave' | 'serper' = 'brave';
+	export let webSearchEngine: WebSearchEngine = 'brave';
+	export let webSearchMaxUses = 3;
+	export let webSearchMaxResults = 5;
+	export let webSearchMaxTotalResults = 12;
+	export let webSearchContextSize: OpenRouterSearchContextSize = 'medium';
+	export let openRouterCacheMode: OpenRouterCacheMode = 'smart';
 	export let reasoningLevel: ReasoningLevel | null = null;
 	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
 
@@ -231,6 +241,11 @@
 						bind:codeInterpreterEnabled
 						bind:webSearchEnabled
 						bind:webSearchEngine
+						bind:webSearchMaxUses
+						bind:webSearchMaxResults
+						bind:webSearchMaxTotalResults
+						bind:webSearchContextSize
+						bind:openRouterCacheMode
 						bind:reasoningLevel
 						{onReasoningLevelChange}
 						bind:atSelectedModel

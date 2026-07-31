@@ -96,6 +96,15 @@
 		type ReasoningControl,
 		type ReasoningLevel
 	} from '$lib/reasoning';
+	import {
+		getOpenRouterControlForModels,
+		isLocalSearchEngine,
+		isOpenRouterSearchEngine,
+		type OpenRouterCacheMode,
+		type OpenRouterControl,
+		type OpenRouterSearchContextSize,
+		type WebSearchEngine
+	} from '$lib/openrouter';
 
 	import InputVariablesModal from './MessageInput/InputVariablesModal.svelte';
 	import Voice from '../icons/Voice.svelte';
@@ -141,9 +150,17 @@
 	let selectedModelIds = [];
 	$: selectedModelIds = atSelectedModel !== undefined ? [atSelectedModel.id] : selectedModels;
 	let reasoningControl: ReasoningControl | null = null;
+	let openRouterControl: OpenRouterControl | null = null;
 	let resolvedReasoningLevel: ReasoningLevel | null = null;
 	$: reasoningControl = getReasoningControlForModels($models, selectedModelIds);
+	$: openRouterControl = getOpenRouterControlForModels($models, selectedModelIds);
 	$: resolvedReasoningLevel = resolveReasoningLevel(reasoningControl, reasoningLevel);
+	$: if (openRouterControl && !isOpenRouterSearchEngine(webSearchEngine)) {
+		webSearchEngine = 'auto';
+	}
+	$: if (!openRouterControl && !isLocalSearchEngine(webSearchEngine)) {
+		webSearchEngine = 'brave';
+	}
 	$: hasChatVariables = selectedModelIds.some(
 		(modelId) =>
 			($models.find((model) => model.id === modelId)?.info?.meta?.chat_variables_schema?.fields
@@ -168,7 +185,12 @@
 
 	export let imageGenerationEnabled = false;
 	export let webSearchEnabled = false;
-	export let webSearchEngine: 'brave' | 'serper' = 'brave';
+	export let webSearchEngine: WebSearchEngine = 'brave';
+	export let webSearchMaxUses = 3;
+	export let webSearchMaxResults = 5;
+	export let webSearchMaxTotalResults = 12;
+	export let webSearchContextSize: OpenRouterSearchContextSize = 'medium';
+	export let openRouterCacheMode: OpenRouterCacheMode = 'smart';
 	export let reasoningLevel: ReasoningLevel | null = null;
 	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
 	export let codeInterpreterEnabled = false;
@@ -232,6 +254,11 @@
 		imageGenerationEnabled,
 		webSearchEnabled,
 		webSearchEngine,
+		webSearchMaxUses,
+		webSearchMaxResults,
+		webSearchMaxTotalResults,
+		webSearchContextSize,
+		openRouterCacheMode,
 		reasoningLevel: resolvedReasoningLevel,
 		codeInterpreterEnabled
 	});
@@ -2086,6 +2113,7 @@
 											<IntegrationsMenu
 												selectedModels={selectedModelIds}
 												{reasoningControl}
+												{openRouterControl}
 												reasoningLevel={resolvedReasoningLevel}
 												onReasoningLevelChange={setReasoningLevel}
 												{toggleFilters}
@@ -2097,6 +2125,11 @@
 												bind:selectedFilterIds
 												bind:webSearchEnabled
 												bind:webSearchEngine
+												bind:webSearchMaxUses
+												bind:webSearchMaxResults
+												bind:webSearchMaxTotalResults
+												bind:webSearchContextSize
+												bind:openRouterCacheMode
 												bind:imageGenerationEnabled
 												bind:codeInterpreterEnabled
 												{onWebSearchToggle}

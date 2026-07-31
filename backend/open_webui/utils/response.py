@@ -57,6 +57,8 @@ USAGE_TOKEN_KEYS = {
     'total_tokens',
     'prompt_tokens',
     'completion_tokens',
+    'cache_creation_input_tokens',
+    'cache_read_input_tokens',
 }
 
 USAGE_COST_KEYS = {
@@ -73,6 +75,7 @@ USAGE_DETAIL_KEYS = {
     'completion_tokens_details',
     'input_tokens_details',
     'output_tokens_details',
+    'server_tool_use',
 }
 
 

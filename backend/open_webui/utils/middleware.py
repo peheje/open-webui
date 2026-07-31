@@ -68,6 +68,10 @@ from open_webui.routers.retrieval import (
     process_web_search,
 )
 from open_webui.utils.web_search_config import resolve_web_search_engine
+from open_webui.utils.openrouter import (
+    apply_openrouter_request,
+    should_use_openrouter_search,
+)
 from open_webui.routers.tasks import (
     generate_chat_tags,
     generate_follow_ups,
@@ -2617,6 +2621,7 @@ async def process_chat_payload(request, form_data, user, metadata, model):
 
     features = form_data.pop('features', None) or {}
     extra_params['__features__'] = features
+    openrouter_search_enabled = should_use_openrouter_search(features, model)
     if features:
         if 'voice' in features and features['voice']:
             if await Config.get('task.voice.prompt.enable'):
@@ -2634,7 +2639,10 @@ async def process_chat_payload(request, form_data, user, metadata, model):
 
         if 'web_search' in features and features['web_search']:
             # Skip forced RAG web search when native FC is enabled - model can use web_search tool
-            if metadata.get('params', {}).get('function_calling') == 'legacy':
+            if (
+                not openrouter_search_enabled
+                and metadata.get('params', {}).get('function_calling') == 'legacy'
+            ):
                 form_data = await chat_web_search_handler(
                     request,
                     form_data,
@@ -2947,6 +2955,9 @@ async def process_chat_payload(request, form_data, user, metadata, model):
             # Add file context to user messages
             chat_id = metadata.get('chat_id')
             form_data['messages'] = await add_file_context(form_data.get('messages', []), chat_id, user)
+            builtin_features = features
+            if openrouter_search_enabled:
+                builtin_features = {**features, 'web_search': False}
             builtin_tools = await get_builtin_tools(
                 request,
                 {
@@ -2954,7 +2965,7 @@ async def process_chat_payload(request, form_data, user, metadata, model):
                     '__event_emitter__': event_emitter,
                     '__skill_ids__': view_skill_ids,
                 },
-                features,
+                builtin_features,
                 model,
             )
             for name, tool_dict in builtin_tools.items():
@@ -2982,6 +2993,17 @@ async def process_chat_payload(request, form_data, user, metadata, model):
                     sources.extend(flags.get('sources', []))
                 except Exception as e:
                     log.exception(e)
+
+    # OpenRouter's gateway-native features must be added after OWUI has
+    # assembled its regular tools, otherwise native function-calling setup can
+    # replace the server-tool entry. The corresponding local web-search tool
+    # was suppressed above to prevent duplicate searches.
+    apply_openrouter_request(
+        form_data,
+        features,
+        model,
+        metadata.get('chat_id'),
+    )
 
     # Check if file context extraction is enabled for this model (default True)
     file_context_enabled = (model.get('info', {}).get('meta', {}).get('capabilities') or {}).get('file_context', True)
