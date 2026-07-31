@@ -63,13 +63,11 @@
 
 	import { WEBUI_BASE_URL, WEBUI_API_BASE_URL, PASTED_TEXT_CHARACTER_LIMIT } from '$lib/constants';
 	import { initiateOAuthRedirect } from '$lib/apis/configs';
-	import { matchKeybinding, Shortcut } from '$lib/shortcuts';
 
 	import { createNoteHandler } from '../notes/utils';
 	import { getSuggestionRenderer } from '../common/RichTextInput/suggestions';
 
 	import InputMenu from './MessageInput/InputMenu.svelte';
-	import VoiceRecording from './MessageInput/VoiceRecording.svelte';
 	import ModelSelector from './ModelSelector.svelte';
 
 	import ToolServersModal from './ToolServersModal.svelte';
@@ -87,7 +85,6 @@
 	import Wrench from '../icons/Wrench.svelte';
 	import Cube from '../icons/Cube.svelte';
 	import Sparkles from '../icons/Sparkles.svelte';
-	import Mic from '../icons/Mic.svelte';
 	import LightBulb from '../icons/LightBulb.svelte';
 	import {
 		getNextReasoningLevel,
@@ -107,7 +104,6 @@
 	} from '$lib/openrouter';
 
 	import InputVariablesModal from './MessageInput/InputVariablesModal.svelte';
-	import Voice from '../icons/Voice.svelte';
 	import Terminal from '../icons/Terminal.svelte';
 	import IntegrationsMenu from './MessageInput/IntegrationsMenu.svelte';
 	import TerminalMenu from './MessageInput/TerminalMenu.svelte';
@@ -170,10 +166,15 @@
 	export let history;
 	export let taskIds = null;
 
+	let showVoiceModeButton = false;
 	$: isActive =
 		(taskIds && taskIds.length > 0) ||
 		(history.currentId && history.messages[history.currentId]?.done != true) ||
 		generating;
+	$: showVoiceModeButton =
+		!isActive &&
+		(!history?.currentId || history.messages[history.currentId]?.done === true) &&
+		($_user?.role === 'admin' || ($_user?.permissions?.chat?.call ?? true));
 	$: canCompact = !!history?.currentId;
 
 	export let prompt = '';
@@ -219,6 +220,33 @@
 	let selectedValvesType = 'tool'; // 'tool' or 'function'
 	let selectedValvesItemId = null;
 	let integrationsMenuCloseOnOutsideClick = true;
+	let integrationsMenu: any = null;
+	let integrationLongPressTimer: ReturnType<typeof setTimeout> | null = null;
+	let integrationLongPressTriggered = false;
+
+	const startIntegrationLongPress = (tab: 'reasoning' | 'web-search') => {
+		if (integrationLongPressTimer) window.clearTimeout(integrationLongPressTimer);
+		integrationLongPressTriggered = false;
+		integrationLongPressTimer = window.setTimeout(() => {
+			integrationLongPressTimer = null;
+			integrationLongPressTriggered = true;
+			integrationsMenu?.openTab(tab);
+			navigator.vibrate?.(10);
+		}, 500);
+	};
+
+	const stopIntegrationLongPress = () => {
+		if (integrationLongPressTimer) window.clearTimeout(integrationLongPressTimer);
+		integrationLongPressTimer = null;
+	};
+
+	const runIntegrationTap = (action: () => void) => {
+		if (integrationLongPressTriggered) {
+			integrationLongPressTriggered = false;
+			return;
+		}
+		action();
+	};
 
 	$: if (!showValvesModal) {
 		integrationsMenuCloseOnOutsideClick = true;
@@ -235,6 +263,45 @@
 		}
 
 		setReasoningLevel(getNextReasoningLevel(reasoningControl, resolvedReasoningLevel));
+	};
+
+	const openVoiceMode = async () => {
+		if (prompt !== '' || files.length > 0) {
+			toast.error($i18n.t('Voice mode is available when the composer is empty'));
+			return;
+		}
+
+		if (selectedModels.length > 1) {
+			toast.error($i18n.t('Select only one model to call'));
+			return;
+		}
+
+		if ($config.audio.stt.engine === 'web') {
+			toast.error($i18n.t('Call feature is not supported when using Web STT engine'));
+			return;
+		}
+
+		try {
+			let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			if (stream) {
+				stream.getTracks().forEach((track) => track.stop());
+			}
+			stream = null;
+
+			if ($settings.audio?.tts?.engine === 'browser-kokoro' && !$TTSWorker) {
+				await TTSWorker.set(
+					new KokoroWorker({
+						dtype: $settings.audio?.tts?.engineConfig?.dtype ?? 'fp32'
+					})
+				);
+				await $TTSWorker.init();
+			}
+
+			showCallOverlay.set(true);
+			showControls.set(true);
+		} catch {
+			toast.error($i18n.t('Permission denied when accessing media devices'));
+		}
 	};
 
 	$: onChange({
@@ -614,8 +681,6 @@
 	let showSkills = false;
 
 	let loaded = false;
-	let recording = false;
-
 	let isComposing = false;
 	// Safari has a bug where compositionend is not triggered correctly #16615
 	// when using the virtual keyboard on iOS.
@@ -1232,21 +1297,6 @@
 			shiftKey = true;
 		}
 
-		if (
-			$settings?.keyboardShortcuts !== false &&
-			matchKeybinding(e) === Shortcut.TOGGLE_DICTATION
-		) {
-			e.preventDefault();
-			if (recording) {
-				// Confirm and stop recording
-				document.getElementById('confirm-recording-button')?.click();
-			} else {
-				// Start recording (same logic as voice-input-button click)
-				document.getElementById('voice-input-button')?.click();
-			}
-			return;
-		}
-
 		if (e.key === 'Escape') {
 			console.log('Escape');
 			dragged = false;
@@ -1568,33 +1618,8 @@
 						}}
 					/>
 
-					<div class={recording ? '' : 'hidden'}>
-						<VoiceRecording
-							bind:recording
-							onCancel={async () => {
-								recording = false;
-
-								await tick();
-								document.getElementById('chat-input')?.focus();
-							}}
-							onConfirm={async (data) => {
-								const { text, filename } = data;
-
-								recording = false;
-
-								await tick();
-								await insertTextAtCursor(`${text}`);
-								await tick();
-								document.getElementById('chat-input')?.focus();
-
-								if ($settings?.speechAutoSend ?? false) {
-									dispatch('submit', prompt);
-								}
-							}}
-						/>
-					</div>
 					<form
-						class="w-full flex flex-col gap-1.5 {recording ? 'hidden' : ''}"
+						class="w-full flex flex-col gap-1.5"
 						on:submit|preventDefault={() => {
 							// check if selectedModels support image input
 							dispatch('submit', prompt);
@@ -2102,15 +2127,16 @@
 										</button>
 									</InputMenu>
 
-									{#if reasoningControl || showWebSearchButton || showImageGenerationButton || showCodeInterpreterButton || showToolsButton || showSkillsButton || (toggleFilters && toggleFilters.length > 0)}
+									{#if reasoningControl || showWebSearchButton || showImageGenerationButton || showCodeInterpreterButton || showVoiceModeButton || showToolsButton || showSkillsButton || (toggleFilters && toggleFilters.length > 0)}
 										<div
 											class="flex self-center w-[1px] h-4 mx-1 bg-gray-200/50 dark:bg-gray-800/50 shrink-0"
 										/>
 									{/if}
 
 									<div class="flex flex-1 items-center min-w-0 overflow-x-auto scrollbar-none">
-										{#if reasoningControl || showWebSearchButton || showImageGenerationButton || showCodeInterpreterButton || showToolsButton || showSkillsButton || (toggleFilters && toggleFilters.length > 0)}
+										{#if reasoningControl || showWebSearchButton || showImageGenerationButton || showCodeInterpreterButton || showVoiceModeButton || showToolsButton || showSkillsButton || (toggleFilters && toggleFilters.length > 0)}
 											<IntegrationsMenu
+												bind:this={integrationsMenu}
 												selectedModels={selectedModelIds}
 												{reasoningControl}
 												{openRouterControl}
@@ -2120,6 +2146,7 @@
 												{showWebSearchButton}
 												{showImageGenerationButton}
 												{showCodeInterpreterButton}
+												{showVoiceModeButton}
 												bind:selectedToolIds
 												bind:selectedSkillIds
 												bind:selectedFilterIds
@@ -2133,6 +2160,7 @@
 												bind:imageGenerationEnabled
 												bind:codeInterpreterEnabled
 												{onWebSearchToggle}
+												onVoiceMode={openVoiceMode}
 												closeOnOutsideClick={integrationsMenuCloseOnOutsideClick}
 												onShowValves={(e) => {
 													const { type, id } = e;
@@ -2287,13 +2315,19 @@
 
 											{#if reasoningControl && resolvedReasoningLevel}
 												<Tooltip
-													content={`${$i18n.t('Reasoning')}: ${resolvedReasoningLevel} · ${reasoningControl.levels[resolvedReasoningLevel]?.label}. ${$i18n.t('Tap to cycle')}.`}
+													content={`${$i18n.t('Reasoning')}: ${resolvedReasoningLevel} · ${reasoningControl.levels[resolvedReasoningLevel]?.label}. ${$i18n.t('Tap to cycle')}; ${$i18n.t('hold for settings')}.`}
 													placement="top"
 												>
 													<button
-														on:click|preventDefault={cycleReasoningLevel}
+														on:pointerdown={() => startIntegrationLongPress('reasoning')}
+														on:pointerup={stopIntegrationLongPress}
+														on:pointercancel={stopIntegrationLongPress}
+														on:pointerleave={stopIntegrationLongPress}
+														on:contextmenu|preventDefault
+														on:click|preventDefault={() => runIntegrationTap(cycleReasoningLevel)}
 														type="button"
-														class="group p-[6px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden text-amber-700 dark:text-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-400/10 dark:hover:bg-amber-600/10 border border-amber-200/50 dark:border-amber-500/20"
+														class="group select-none touch-manipulation p-[6px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden text-amber-700 dark:text-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-400/10 dark:hover:bg-amber-600/10 border border-amber-200/50 dark:border-amber-500/20"
+														style="-webkit-user-select: none; -webkit-touch-callout: none;"
 														aria-label={`${$i18n.t('Reasoning')}: ${resolvedReasoningLevel} · ${reasoningControl.levels[resolvedReasoningLevel]?.label}`}
 													>
 														<LightBulb className="size-4" strokeWidth="1.75" />
@@ -2304,18 +2338,26 @@
 
 											{#if showWebSearchButton}
 												<Tooltip
-													content={`${$i18n.t('Web Search')}: ${webSearchEnabled ? $i18n.t('Enabled') : $i18n.t('Disabled')} · ${webSearchEngine}. ${$i18n.t('Tap to toggle')}.`}
+													content={`${$i18n.t('Web Search')}: ${webSearchEnabled ? $i18n.t('Enabled') : $i18n.t('Disabled')} · ${webSearchEngine}. ${$i18n.t('Tap to toggle')}; ${$i18n.t('hold for settings')}.`}
 													placement="top"
 												>
 													<button
+														on:pointerdown={() => startIntegrationLongPress('web-search')}
+														on:pointerup={stopIntegrationLongPress}
+														on:pointercancel={stopIntegrationLongPress}
+														on:pointerleave={stopIntegrationLongPress}
+														on:contextmenu|preventDefault
 														on:click|preventDefault={() => {
-															webSearchEnabled = !webSearchEnabled;
-															onWebSearchToggle(webSearchEnabled);
+															runIntegrationTap(() => {
+																webSearchEnabled = !webSearchEnabled;
+																onWebSearchToggle(webSearchEnabled);
+															});
 														}}
 														type="button"
+														style="-webkit-user-select: none; -webkit-touch-callout: none;"
 														aria-pressed={webSearchEnabled}
 														aria-label={`${$i18n.t('Web Search')}: ${webSearchEnabled ? $i18n.t('Enabled') : $i18n.t('Disabled')}`}
-														class="group p-[6px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden border {webSearchEnabled
+														class="group select-none touch-manipulation p-[6px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden border {webSearchEnabled
 															? 'text-sky-700 dark:text-sky-200 bg-sky-100 hover:bg-sky-200 dark:bg-sky-400/20 dark:hover:bg-sky-400/30 border-sky-300/60 dark:border-sky-400/30'
 															: 'text-gray-500 dark:text-gray-400 bg-gray-100/70 hover:bg-gray-200/70 dark:bg-gray-800/70 dark:hover:bg-gray-700/70 border-gray-200/70 dark:border-gray-700'}"
 													>
@@ -2452,146 +2494,39 @@
 											</Tooltip>
 										</div>
 									{:else}
-										{#if !history?.currentId || history.messages[history.currentId]?.done == true}
-											{#if $_user?.role === 'admin' || ($_user?.permissions?.chat?.stt ?? true)}
-												<!-- {$i18n.t('Record voice')} -->
-												<Tooltip content={$i18n.t('Dictate')}>
-													<button
-														id="voice-input-button"
-														class=" text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 transition rounded-full p-1.5 self-center mr-0.5"
-														type="button"
-														on:click={async () => {
-															try {
-																let stream = await navigator.mediaDevices
-																	.getUserMedia({ audio: true })
-																	.catch(function (err) {
-																		toast.error(
-																			$i18n.t(
-																				`Permission denied when accessing microphone: {{error}}`,
-																				{
-																					error: err
-																				}
-																			)
-																		);
-																		return null;
-																	});
-
-																if (stream) {
-																	recording = true;
-																	const tracks = stream.getTracks();
-																	tracks.forEach((track) => track.stop());
-																}
-																stream = null;
-															} catch {
-																toast.error($i18n.t('Permission denied when accessing microphone'));
-															}
-														}}
-														aria-label="Voice Input"
-													>
-														<Mic className="size-[18px]" />
-													</button>
-												</Tooltip>
-											{/if}
-										{/if}
-
-										{#if prompt === '' && files.length === 0 && ($_user?.role === 'admin' || ($_user?.permissions?.chat?.call ?? true))}
-											<div class=" flex items-center">
-												<!-- {$i18n.t('Call')} -->
-												<Tooltip content={$i18n.t('Voice mode')}>
-													<button
-														class=" bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 transition rounded-full p-[5px] self-center"
-														type="button"
-														on:click={async () => {
-															if (selectedModels.length > 1) {
-																toast.error($i18n.t('Select only one model to call'));
-
-																return;
-															}
-
-															if ($config.audio.stt.engine === 'web') {
-																toast.error(
-																	$i18n.t('Call feature is not supported when using Web STT engine')
-																);
-
-																return;
-															}
-															// check if user has access to getUserMedia
-															try {
-																let stream = await navigator.mediaDevices.getUserMedia({
-																	audio: true
-																});
-																// If the user grants the permission, proceed to show the call overlay
-
-																if (stream) {
-																	const tracks = stream.getTracks();
-																	tracks.forEach((track) => track.stop());
-																}
-
-																stream = null;
-
-																if ($settings.audio?.tts?.engine === 'browser-kokoro') {
-																	// If the user has not initialized the TTS worker, initialize it
-																	if (!$TTSWorker) {
-																		await TTSWorker.set(
-																			new KokoroWorker({
-																				dtype: $settings.audio?.tts?.engineConfig?.dtype ?? 'fp32'
-																			})
-																		);
-
-																		await $TTSWorker.init();
-																	}
-																}
-
-																showCallOverlay.set(true);
-																showControls.set(true);
-															} catch (err) {
-																// If the user denies the permission or an error occurs, show an error message
-																toast.error(
-																	$i18n.t('Permission denied when accessing media devices')
-																);
-															}
-														}}
-														aria-label={$i18n.t('Voice mode')}
-													>
-														<Voice className="size-5" strokeWidth="2.5" />
-													</button>
-												</Tooltip>
-											</div>
-										{:else}
-											<div class=" flex items-center">
-												<Tooltip
-													content={uploadPending
-														? $i18n.t('Waiting for upload...')
-														: $i18n.t('Send message')}
+										<div class=" flex items-center">
+											<Tooltip
+												content={uploadPending
+													? $i18n.t('Waiting for upload...')
+													: $i18n.t('Send message')}
+											>
+												<button
+													id="send-message-button"
+													class="{!(prompt === '' && files.length === 0) || uploadPending
+														? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 '
+														: 'text-white bg-gray-200 dark:text-gray-900 dark:bg-gray-700 disabled'} transition rounded-full p-[5px] self-center"
+													type="submit"
+													disabled={(prompt === '' && files.length === 0) || uploadPending}
 												>
-													<button
-														id="send-message-button"
-														class="{!(prompt === '' && files.length === 0) || uploadPending
-															? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 '
-															: 'text-white bg-gray-200 dark:text-gray-900 dark:bg-gray-700 disabled'} transition rounded-full p-[5px] self-center"
-														type="submit"
-														disabled={(prompt === '' && files.length === 0) || uploadPending}
-													>
-														{#if uploadPending}
-															<Spinner className="size-5" />
-														{:else}
-															<svg
-																xmlns="http://www.w3.org/2000/svg"
-																viewBox="0 0 16 16"
-																fill="currentColor"
-																class="size-5"
-															>
-																<path
-																	fill-rule="evenodd"
-																	d="M8 14a.75.75 0 0 1-.75-.75V4.56L4.03 7.78a.75.75 0 0 1-1.06-1.06l4.5-4.5a.75.75 0 0 1 1.06 0l4.5 4.5a.75.75 0 0 1-1.06 1.06L8.75 4.56v8.69A.75.75 0 0 1 8 14Z"
-																	clip-rule="evenodd"
-																/>
-															</svg>
-														{/if}
-													</button>
-												</Tooltip>
-											</div>
-										{/if}
+													{#if uploadPending}
+														<Spinner className="size-5" />
+													{:else}
+														<svg
+															xmlns="http://www.w3.org/2000/svg"
+															viewBox="0 0 16 16"
+															fill="currentColor"
+															class="size-5"
+														>
+															<path
+																fill-rule="evenodd"
+																d="M8 14a.75.75 0 0 1-.75-.75V4.56L4.03 7.78a.75.75 0 0 1-1.06-1.06l4.5-4.5a.75.75 0 0 1 1.06 0l4.5 4.5a.75.75 0 0 1-1.06 1.06L8.75 4.56v8.69A.75.75 0 0 1 8 14Z"
+																clip-rule="evenodd"
+															/>
+														</svg>
+													{/if}
+												</button>
+											</Tooltip>
+										</div>
 									{/if}
 								</div>
 							</div>

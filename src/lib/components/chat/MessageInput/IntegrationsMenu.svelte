@@ -36,6 +36,7 @@
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
 	import LinkSlash from '$lib/components/icons/LinkSlash.svelte';
 	import LightBulb from '$lib/components/icons/LightBulb.svelte';
+	import Voice from '$lib/components/icons/Voice.svelte';
 	import { REASONING_LEVEL_IDS, type ReasoningControl, type ReasoningLevel } from '$lib/reasoning';
 	import {
 		LOCAL_SEARCH_ENGINES,
@@ -73,11 +74,13 @@
 	export let imageGenerationEnabled = false;
 	export let showCodeInterpreterButton = false;
 	export let codeInterpreterEnabled = false;
+	export let showVoiceModeButton = false;
 
 	export let onShowValves: Function;
 	export let onClose: Function;
 	export let onWebSearchToggle: Function = () => {};
 	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
+	export let onVoiceMode: () => void = () => {};
 	export let closeOnOutsideClick = true;
 
 	type OpenRouterSearchDepth = 'quick' | 'balanced' | 'deep';
@@ -122,9 +125,7 @@
 	$: webSearchDepth =
 		webSearchMaxUses <= 1 && webSearchMaxTotalResults <= 3 && webSearchContextSize === 'low'
 			? 'quick'
-			: webSearchMaxUses >= 5 ||
-				  webSearchMaxTotalResults >= 25 ||
-				  webSearchContextSize === 'high'
+			: webSearchMaxUses >= 5 || webSearchMaxTotalResults >= 25 || webSearchContextSize === 'high'
 				? 'deep'
 				: 'balanced';
 
@@ -139,6 +140,13 @@
 
 	let show = false;
 	let tab = '';
+
+	export function openTab(target: 'reasoning' | 'web-search') {
+		if (target === 'reasoning' && !reasoningControl) return;
+		if (target === 'web-search' && !showWebSearchButton) return;
+		tab = target;
+		show = true;
+	}
 
 	let tools = null;
 	let skills = null;
@@ -466,6 +474,30 @@
 							</button>
 						</Tooltip>
 					{/if}
+
+					{#if showVoiceModeButton}
+						<Tooltip content={$i18n.t('Start a hands-free conversation')} placement="top-start">
+							<button
+								type="button"
+								class="flex w-full select-none justify-between gap-2 items-center h-[1.6875rem] px-2 text-[13px] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+								on:click={() => {
+									show = false;
+									onVoiceMode();
+								}}
+							>
+								<div class="flex-1 truncate">
+									<div class="flex flex-1 gap-2 items-center">
+										<div class="shrink-0">
+											<Voice className="size-3.5" strokeWidth="2" />
+										</div>
+										<div class="truncate">{$i18n.t('Voice mode')}</div>
+									</div>
+								</div>
+
+								<span class="text-[11px] text-gray-500">{$i18n.t('Open')}</span>
+							</button>
+						</Tooltip>
+					{/if}
 				</div>
 			{:else if tab === 'reasoning' && reasoningControl && reasoningLevel}
 				<div in:fly={{ x: 20, duration: 150 }} class="space-y-2 px-1 pb-1">
@@ -568,7 +600,9 @@
 							{$i18n.t('Search provider')}
 						</div>
 						<div
-							class="grid {openRouterControl ? 'grid-cols-3' : 'grid-cols-2'} gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800"
+							class="grid {openRouterControl
+								? 'grid-cols-3'
+								: 'grid-cols-2'} gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800"
 						>
 							{#each openRouterControl ? OPENROUTER_SEARCH_ENGINES : LOCAL_SEARCH_ENGINES as engine (engine)}
 								<button
@@ -622,7 +656,8 @@
 							</div>
 							<p class="mt-1.5 text-[10px] leading-4 text-gray-500">
 								{$i18n.t(
-									OPENROUTER_SEARCH_DEPTHS.find((depth) => depth.id === webSearchDepth)?.description ?? ''
+									OPENROUTER_SEARCH_DEPTHS.find((depth) => depth.id === webSearchDepth)
+										?.description ?? ''
 								)}
 							</p>
 						</div>
@@ -632,11 +667,7 @@
 								{$i18n.t('Prompt cache')}
 							</div>
 							<div class="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
-								{#each [
-									{ id: 'smart', label: $i18n.t('Smart') },
-									{ id: 'long', label: '1h' },
-									{ id: 'provider_default', label: $i18n.t('Provider') }
-								] as cache (cache.id)}
+								{#each [{ id: 'smart', label: $i18n.t('Smart') }, { id: 'long', label: '1h' }, { id: 'provider_default', label: $i18n.t('Provider') }] as cache (cache.id)}
 									<button
 										type="button"
 										class="relative overflow-hidden rounded-lg border border-transparent px-1 py-1 text-[11px] {openRouterCacheMode ===
@@ -659,12 +690,15 @@
 							</div>
 							<p class="mt-1.5 text-[10px] leading-4 text-gray-500">
 								{openRouterControl.official_provider === 'anthropic'
-									? $i18n.t('Smart uses a five-minute Claude prompt cache; 1h costs more to write but suits long sessions.')
-									: $i18n.t('This provider manages prompt caching automatically. Sticky per-chat routing remains enabled.')}
+									? $i18n.t(
+											'Smart uses a five-minute Claude prompt cache; 1h costs more to write but suits long sessions.'
+										)
+									: $i18n.t(
+											'This provider manages prompt caching automatically. Sticky per-chat routing remains enabled.'
+										)}
 							</p>
 						</div>
 					{/if}
-
 				</div>
 			{:else if tab === 'tools' && tools}
 				<div in:fly={{ x: 20, duration: 150 }}>
