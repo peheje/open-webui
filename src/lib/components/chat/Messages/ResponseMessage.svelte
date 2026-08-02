@@ -65,10 +65,7 @@
 	import FullHeightIframe from '$lib/components/common/FullHeightIframe.svelte';
 	import OutputEditView from './OutputEditView.svelte';
 	import { getOutputText, replaceOutputMessageText, type OutputItem } from './structuredOutput';
-	import {
-		getOpenRouterSessionId,
-		OPENROUTER_SESSIONS_URL
-	} from '$lib/openrouter';
+	import { getOpenRouterSessionUrl } from '$lib/openrouter';
 
 	interface MessageType {
 		id: string;
@@ -184,16 +181,18 @@
 
 	let model = null;
 	$: model = $models.find((m) => m.id === message.model);
+	$: isOpenRouterResponse =
+		message.model?.startsWith('or.') || Boolean(model?.info?.meta?.openrouter);
 	let openRouterSessionSource = '';
-	let openRouterSessionId: string | null = null;
-	$: openRouterSessionSource = model?.info?.meta?.openrouter && chatId ? chatId : '';
+	let openRouterSessionUrl: string | null = null;
+	$: openRouterSessionSource = isOpenRouterResponse && chatId ? chatId : '';
 	$: if (openRouterSessionSource) {
 		const source = openRouterSessionSource;
-		getOpenRouterSessionId(source).then((value) => {
-			if (openRouterSessionSource === source) openRouterSessionId = value;
+		getOpenRouterSessionUrl(source).then((url) => {
+			if (openRouterSessionSource === source) openRouterSessionUrl = url;
 		});
 	} else {
-		openRouterSessionId = null;
+		openRouterSessionUrl = null;
 	}
 
 	$: statusEntries = message?.statusHistory ?? [...(message?.status ? [message?.status] : [])];
@@ -1091,6 +1090,22 @@
 									</button>
 								</Tooltip>
 
+								{#if openRouterSessionUrl}
+									<Tooltip content={$i18n.t('Open this chat in OpenRouter')} placement="bottom">
+										<a
+											aria-label={$i18n.t('Open this chat in OpenRouter')}
+											href={openRouterSessionUrl}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="{isLastMessage || ($settings?.highContrastMode ?? false)
+												? 'visible'
+												: 'invisible group-hover:visible'} select-none rounded-lg px-1.5 py-1 text-[11px] font-semibold transition hover:bg-black/5 hover:text-black dark:hover:bg-white/5 dark:hover:text-white"
+										>
+											OR
+										</a>
+									</Tooltip>
+								{/if}
+
 								{#if onInsertToNote && visibleResponseContent}
 									<Tooltip content={$i18n.t('Insert into note')} placement="bottom">
 										<button
@@ -1192,30 +1207,6 @@
 												</svg>
 											{/if}
 										</button>
-									</Tooltip>
-								{/if}
-
-								{#if openRouterSessionId}
-									<Tooltip
-										content={`Open OpenRouter Sessions and copy ${openRouterSessionId}`}
-										placement="bottom"
-									>
-										<a
-											aria-label="Open OpenRouter session logs"
-											href={OPENROUTER_SESSIONS_URL}
-											target="_blank"
-											rel="noreferrer"
-											class="{isLastMessage || ($settings?.highContrastMode ?? false)
-												? 'visible'
-												: 'invisible group-hover:visible'} px-1.5 py-1 text-[11px] font-semibold hover:bg-black/5 dark:hover:bg-white/5 rounded-lg dark:hover:text-white hover:text-black transition"
-											on:click={() => {
-												void _copyToClipboard(openRouterSessionId).then((copied: boolean) => {
-													if (copied) toast.success('OpenRouter session ID copied');
-												});
-											}}
-										>
-											OR
-										</a>
 									</Tooltip>
 								{/if}
 

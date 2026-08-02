@@ -1,4 +1,5 @@
 import type { Model } from '$lib/stores';
+import sha256 from 'js-sha256';
 
 export const LOCAL_SEARCH_ENGINES = ['brave', 'serper'] as const;
 export const OPENROUTER_SEARCH_ENGINES = [
@@ -42,11 +43,13 @@ export const isLocalSearchEngine = (engine: WebSearchEngine): engine is LocalSea
 export const OPENROUTER_SESSIONS_URL = 'https://openrouter.ai/logs?tab=sessions';
 
 export const getOpenRouterSessionId = async (chatId: string): Promise<string | null> => {
-	if (!chatId || !globalThis.crypto?.subtle) return null;
-	const bytes = new TextEncoder().encode(chatId);
-	const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
-	const hex = Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join(
-		''
-	);
-	return `owui-${hex.slice(0, 40)}`;
+	if (!chatId) return null;
+	return `owui-${sha256(chatId).slice(0, 40)}`;
+};
+
+export const getOpenRouterSessionUrl = async (chatId: string): Promise<string | null> => {
+	const sessionId = await getOpenRouterSessionId(chatId);
+	return sessionId
+		? `${OPENROUTER_SESSIONS_URL}&session_id=${encodeURIComponent(sessionId)}`
+		: null;
 };
