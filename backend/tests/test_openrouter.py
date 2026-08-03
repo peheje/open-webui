@@ -1,7 +1,13 @@
+import asyncio
+from types import SimpleNamespace
+
+from open_webui.utils import middleware as middleware_utils
+from open_webui.routers import images as image_router
 from open_webui.utils.openrouter import (
     apply_openrouter_request,
     finalize_openrouter_request,
     is_openrouter_model,
+    resolve_openrouter_image_parameters,
     resolve_openrouter_search_parameters,
     should_use_openrouter_search,
 )
@@ -42,6 +48,131 @@ def test_only_curated_openrouter_models_activate_gateway_features():
     assert not is_openrouter_model({"id": "di.sonnet5"})
     assert should_use_openrouter_search({"web_search": True}, OPENROUTER_MODEL)
     assert not should_use_openrouter_search({"web_search": False}, OPENROUTER_MODEL)
+
+
+def test_image_model_is_allowlisted_with_balanced_fallback():
+    assert resolve_openrouter_image_parameters(
+        {"model": "openai/gpt-image-2"}
+    ) == {"model": "openai/gpt-image-2"}
+    assert resolve_openrouter_image_parameters(
+        {"model": "unknown/vendor-model"}
+    ) == {"model": "google/gemini-3.1-flash-image"}
+
+
+def test_openrouter_webp_image_is_persisted_before_display(monkeypatch):
+    stored = []
+
+    async def fake_store(request, image_url, metadata, user):
+        stored.append(image_url)
+        return "/api/v1/files/test/content"
+
+    monkeypatch.setattr(
+        middleware_utils,
+        "get_image_url_from_base64",
+        fake_store,
+    )
+    result = asyncio.run(
+        middleware_utils.get_image_urls(
+            [
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "data:image/webp;base64,UklGRg=="},
+                }
+            ],
+            request=None,
+            metadata={"chat_id": "chat-image"},
+            user=None,
+        )
+    )
+
+    assert stored == ["data:image/webp;base64,UklGRg=="]
+    assert result == ["/api/v1/files/test/content"]
+
+
+def test_direct_openrouter_image_route_persists_the_provider_result(monkeypatch):
+    one_pixel_png = (
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+        "YAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+    )
+    posted = {}
+
+    class FakeResponse:
+        status = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return False
+
+        async def json(self, content_type=None):
+            return {
+                "data": [{"b64_json": one_pixel_png}],
+                "usage": {"cost": 0.001},
+            }
+
+    class FakeSession:
+        def post(self, **kwargs):
+            posted.update(kwargs)
+            return FakeResponse()
+
+    async def fake_config_get(key):
+        return {}
+
+    async def fake_connection():
+        return "test-key", {}
+
+    async def fake_session():
+        return FakeSession()
+
+    async def fake_upload(request, image_data, content_type, metadata, user, db=None):
+        assert image_data.startswith(b"\x89PNG")
+        assert content_type == "image/png"
+        assert metadata == {
+            "provider": "openrouter",
+            "model": "google/gemini-3.1-flash-image",
+        }
+        return SimpleNamespace(id="file-1", filename="generated-image.png"), "/api/v1/files/file-1/content"
+
+    async def fake_publish(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(image_router.Config, "get", fake_config_get)
+    monkeypatch.setattr(image_router, "get_openrouter_image_connection", fake_connection)
+    monkeypatch.setattr(image_router, "get_session", fake_session)
+    monkeypatch.setattr(image_router, "upload_image", fake_upload)
+    monkeypatch.setattr(image_router, "publish_event", fake_publish)
+
+    result = asyncio.run(
+        image_router.generate_openrouter_images(
+            request=SimpleNamespace(),
+            form_data=image_router.OpenRouterCreateImageForm(
+                model="google/gemini-3.1-flash-image",
+                prompt="A blue circle",
+            ),
+            user=SimpleNamespace(id="user-1", role="admin"),
+        )
+    )
+
+    assert posted["url"] == "https://openrouter.ai/api/v1/images"
+    assert posted["json"] == {
+        "model": "google/gemini-3.1-flash-image",
+        "prompt": "A blue circle",
+        "n": 1,
+    }
+    assert result == {
+        "model": "google/gemini-3.1-flash-image",
+        "images": [
+            {
+                "id": "file-1",
+                "type": "image",
+                "url": "/api/v1/files/file-1/content",
+                "name": "generated-image.png",
+                "content_type": "image/png",
+            }
+        ],
+        "usage": {"cost": 0.001},
+    }
 
 
 def test_search_options_are_validated_and_bounded():

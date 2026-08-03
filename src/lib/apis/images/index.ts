@@ -235,6 +235,48 @@ export const imageGenerations = async (token: string = '', prompt: string) => {
 	return res;
 };
 
+export const openRouterImageGenerations = async (
+	token: string,
+	{
+		model,
+		prompt,
+		n = 1,
+		signal
+	}: { model: string; prompt: string; n?: number; signal?: AbortSignal }
+) => {
+	let error = null;
+
+	const res = await fetch(`${IMAGES_API_BASE_URL}/openrouter/generations`, {
+		method: 'POST',
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+			...(token && { authorization: `Bearer ${token}` })
+		},
+		body: JSON.stringify({ model, prompt, n }),
+		signal
+	})
+		.then(async (response) => {
+			if (!response.ok) throw await response.json();
+			return response.json();
+		})
+		.catch((err) => {
+			if (err?.name === 'AbortError') throw err;
+			console.error(err);
+			if ('detail' in err) {
+				error = Array.isArray(err.detail)
+					? err.detail.map((item: { msg?: string }) => item.msg || JSON.stringify(item)).join(', ')
+					: err.detail;
+			} else {
+				error = 'Server connection failed';
+			}
+			return null;
+		});
+
+	if (error) throw error;
+	return res;
+};
+
 export const imageEdits = async (
 	token: string = '',
 	images: string | string[],

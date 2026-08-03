@@ -40,9 +40,12 @@
 	import { REASONING_LEVEL_IDS, type ReasoningControl, type ReasoningLevel } from '$lib/reasoning';
 	import {
 		LOCAL_SEARCH_ENGINES,
+		OPENROUTER_IMAGE_MODELS,
 		OPENROUTER_SEARCH_ENGINES,
+		getOpenRouterImageModel,
 		type OpenRouterCacheMode,
 		type OpenRouterControl,
+		type OpenRouterImageModel,
 		type OpenRouterSearchContextSize,
 		type WebSearchEngine
 	} from '$lib/openrouter';
@@ -67,6 +70,8 @@
 	export let webSearchMaxTotalResults = 12;
 	export let webSearchContextSize: OpenRouterSearchContextSize = 'medium';
 	export let openRouterCacheMode: OpenRouterCacheMode = 'smart';
+	export let openRouterImageModel: OpenRouterImageModel = 'google/gemini-3.1-flash-image';
+	export let openRouterImageAvailable = false;
 	export let openRouterControl: OpenRouterControl | null = null;
 	export let reasoningControl: ReasoningControl | null = null;
 	export let reasoningLevel: ReasoningLevel | null = null;
@@ -141,9 +146,11 @@
 	let show = false;
 	let tab = '';
 
-	export function openTab(target: 'reasoning' | 'web-search') {
+	export function openTab(target: 'reasoning' | 'web-search' | 'image-generation') {
 		if (target === 'reasoning' && !reasoningControl) return;
 		if (target === 'web-search' && !showWebSearchButton) return;
+		if (target === 'image-generation' && (!showImageGenerationButton || !openRouterImageAvailable))
+			return;
 		tab = target;
 		show = true;
 	}
@@ -414,7 +421,11 @@
 									? $i18n.t('Disable Image Generation')
 									: $i18n.t('Enable Image Generation')}
 								on:click={() => {
-									imageGenerationEnabled = !imageGenerationEnabled;
+									if (openRouterImageAvailable) {
+										tab = 'image-generation';
+									} else {
+										imageGenerationEnabled = !imageGenerationEnabled;
+									}
 								}}
 							>
 								<div class="flex-1 truncate">
@@ -427,15 +438,21 @@
 									</div>
 								</div>
 
-								<div class=" shrink-0">
-									<Switch
-										state={imageGenerationEnabled}
-										on:change={async (e) => {
-											const state = e.detail;
-											await tick();
-										}}
-									/>
-								</div>
+								{#if openRouterImageAvailable}
+									<div class="flex shrink-0 items-center gap-1 text-gray-500">
+										<span>{getOpenRouterImageModel(openRouterImageModel).shortLabel}</span>
+										<ChevronRight />
+									</div>
+								{:else}
+									<div class="shrink-0">
+										<Switch
+											state={imageGenerationEnabled}
+											on:change={async () => {
+												await tick();
+											}}
+										/>
+									</div>
+								{/if}
 							</button>
 						</Tooltip>
 					{/if}
@@ -699,6 +716,85 @@
 							</p>
 						</div>
 					{/if}
+				</div>
+			{:else if tab === 'image-generation' && openRouterImageAvailable}
+				<div in:fly={{ x: 20, duration: 150 }} class="space-y-2 px-1 pb-1">
+					<button
+						class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-1 text-[13px] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+						on:click={() => {
+							tab = '';
+						}}
+					>
+						<ChevronLeft />
+						<div class="flex w-full items-center justify-between">
+							<span>{$i18n.t('Image generation')}</span>
+						</div>
+					</button>
+
+					<button
+						class="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-[13px] hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+						on:click={() => {
+							imageGenerationEnabled = !imageGenerationEnabled;
+						}}
+					>
+						<span>{$i18n.t('Enabled')}</span>
+						<span class="flex items-center gap-1.5">
+							<span
+								class="text-[11px] font-medium {imageGenerationEnabled
+									? 'text-sky-700 dark:text-sky-300'
+									: 'text-gray-500 dark:text-gray-400'}"
+							>
+								{imageGenerationEnabled ? $i18n.t('On') : $i18n.t('Off')}
+							</span>
+							<span
+								aria-hidden="true"
+								class="relative h-4 w-7 shrink-0 rounded-full transition-colors duration-150 {imageGenerationEnabled
+									? 'bg-sky-500 dark:bg-sky-400'
+									: 'bg-gray-300 dark:bg-gray-700'}"
+							>
+								<span
+									class="absolute top-0.5 block h-3 w-3 rounded-full bg-white shadow-sm transition-all duration-150 {imageGenerationEnabled
+										? 'left-3.5 dark:bg-white'
+										: 'left-0.5 dark:bg-gray-400'}"
+								></span>
+							</span>
+						</span>
+					</button>
+
+					<div class="px-2">
+						<div class="mb-1 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+							{$i18n.t('Image model')}
+						</div>
+						<div class="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+							{#each OPENROUTER_IMAGE_MODELS as model (model.id)}
+								<button
+									type="button"
+									class="relative overflow-hidden rounded-lg border border-transparent px-2 py-1.5 text-left text-[11px] {openRouterImageModel ===
+									model.id
+										? 'font-semibold text-gray-900 dark:text-white'
+										: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
+									aria-pressed={openRouterImageModel === model.id}
+									on:click={() => {
+										openRouterImageModel = model.id;
+									}}
+								>
+									{#if openRouterImageModel === model.id}
+										<span
+											aria-hidden="true"
+											class="pointer-events-none absolute inset-0 rounded-lg border border-sky-300 bg-sky-100 dark:border-sky-700 dark:bg-sky-900/70"
+										></span>
+									{/if}
+									<span class="relative z-10 block truncate">{model.shortLabel}</span>
+								</button>
+							{/each}
+						</div>
+						<p class="mt-1.5 text-[10px] leading-4 text-gray-500">
+							{getOpenRouterImageModel(openRouterImageModel).description}
+						</p>
+						<p class="mt-1 text-[10px] leading-4 text-gray-500">
+							{$i18n.t('Your prompt goes directly to this image model. No chat model is called.')}
+						</p>
+					</div>
 				</div>
 			{:else if tab === 'tools' && tools}
 				<div in:fly={{ x: 20, duration: 150 }}>

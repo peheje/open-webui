@@ -1464,7 +1464,10 @@ async def chat_web_search_handler(
         )
 
         if results:
-            files = form_data.get('files', [])
+            # Ordinary chats explicitly send files=null. Treat that the same
+            # as an omitted/empty attachment list before appending search
+            # collections. Otherwise legacy web search fails after retrieval.
+            files = normalize_form_files(form_data)
 
             if results.get('collection_names'):
                 for col_idx, collection_name in enumerate(results.get('collection_names')):
@@ -1565,8 +1568,10 @@ async def get_image_urls(delta_images, request, metadata, user) -> list[str]:
         if not url:
             continue
 
-        if url.startswith('data:image/png;base64'):
-            url = await get_image_url_from_base64(request, url, metadata, user)
+        if url.startswith('data:image/'):
+            stored_url = await get_image_url_from_base64(request, url, metadata, user)
+            if stored_url:
+                url = stored_url
 
         image_urls.append(url)
 
@@ -3129,6 +3134,31 @@ def get_response_data(response):
     return response, response_data
 
 
+def normalize_form_files(form_data):
+    """Return a mutable attachment list for omitted, null, or list payloads."""
+    files = form_data.get('files')
+    if not isinstance(files, list):
+        files = []
+        form_data['files'] = files
+    return files
+
+
+def get_response_error_content(response_data):
+    """Return a provider error as displayable text, if one is present."""
+    if not isinstance(response_data, dict) or 'error' not in response_data:
+        return None
+
+    error = response_data.get('error')
+    if isinstance(error, dict):
+        for key in ('message', 'detail', 'content'):
+            value = error.get(key)
+            if value:
+                return str(value)
+        return json.dumps(error, ensure_ascii=False)
+
+    return str(error)
+
+
 def merge_events_into_response(response_data, events):
     if events and isinstance(events, list):
         extra_response = {}
@@ -3673,13 +3703,8 @@ async def non_streaming_chat_response_handler(response, ctx):
 
     if event_emitter:
         try:
-            if 'error' in response_data:
-                error = response_data.get('error')
-
-                if isinstance(error, dict):
-                    error = error.get('detail', error)
-                else:
-                    error = str(error)
+            error = get_response_error_content(response_data)
+            if error is not None:
 
                 log.error('Provider returned error (non-streaming): %s', error)
 
@@ -5282,9 +5307,43 @@ async def streaming_chat_response_handler(response, ctx):
                             output[:0] = prior_output
                             prior_output = []
                         else:
+                            _, response_data = get_response_data(res)
+                            error_content = get_response_error_content(response_data)
+                            if error_content is not None:
+                                log.error(
+                                    'Provider returned error after tool call: %s',
+                                    error_content,
+                                )
+                                if not metadata.get('chat_id', '').startswith('channel:'):
+                                    await Chats.upsert_message_to_chat_by_id_and_message_id(
+                                        metadata['chat_id'],
+                                        metadata['message_id'],
+                                        {'error': {'content': error_content}},
+                                    )
+                                if event_emitter:
+                                    await event_emitter(
+                                        {
+                                            'type': 'chat:message:error',
+                                            'data': {'error': {'content': error_content}},
+                                        }
+                                    )
                             break
                     except Exception as e:
-                        log.debug(e)
+                        error_content = f'Provider request failed after tool call: {e}'
+                        log.exception(error_content)
+                        if not metadata.get('chat_id', '').startswith('channel:'):
+                            await Chats.upsert_message_to_chat_by_id_and_message_id(
+                                metadata['chat_id'],
+                                metadata['message_id'],
+                                {'error': {'content': error_content}},
+                            )
+                        if event_emitter:
+                            await event_emitter(
+                                {
+                                    'type': 'chat:message:error',
+                                    'data': {'error': {'content': error_content}},
+                                }
+                            )
                         break
 
                 if (
