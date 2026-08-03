@@ -94,11 +94,13 @@
 		type ReasoningLevel
 	} from '$lib/reasoning';
 	import {
+		getOpenRouterImageModel,
 		getOpenRouterControlForModels,
 		isLocalSearchEngine,
 		isOpenRouterSearchEngine,
 		type OpenRouterCacheMode,
 		type OpenRouterControl,
+		type OpenRouterImageModel,
 		type OpenRouterSearchContextSize,
 		type WebSearchEngine
 	} from '$lib/openrouter';
@@ -150,6 +152,14 @@
 	let resolvedReasoningLevel: ReasoningLevel | null = null;
 	$: reasoningControl = getReasoningControlForModels($models, selectedModelIds);
 	$: openRouterControl = getOpenRouterControlForModels($models, selectedModelIds);
+	let openRouterImageAvailable = false;
+	let directImageMode = false;
+	$: openRouterImageAvailable = Boolean(
+		($_user?.role === 'admin' || $_user?.permissions?.features?.image_generation) &&
+		($config?.features?.enable_openrouter_image_generation ||
+			$models.some((model) => model?.info?.meta?.openrouter))
+	);
+	$: directImageMode = openRouterImageAvailable && imageGenerationEnabled;
 	$: resolvedReasoningLevel = resolveReasoningLevel(reasoningControl, reasoningLevel);
 	$: if (openRouterControl && !isOpenRouterSearchEngine(webSearchEngine)) {
 		webSearchEngine = 'auto';
@@ -192,6 +202,7 @@
 	export let webSearchMaxTotalResults = 12;
 	export let webSearchContextSize: OpenRouterSearchContextSize = 'medium';
 	export let openRouterCacheMode: OpenRouterCacheMode = 'smart';
+	export let openRouterImageModel: OpenRouterImageModel = 'google/gemini-3.1-flash-image';
 	export let reasoningLevel: ReasoningLevel | null = null;
 	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
 	export let codeInterpreterEnabled = false;
@@ -224,7 +235,7 @@
 	let integrationLongPressTimer: ReturnType<typeof setTimeout> | null = null;
 	let integrationLongPressTriggered = false;
 
-	const startIntegrationLongPress = (tab: 'reasoning' | 'web-search') => {
+	const startIntegrationLongPress = (tab: 'reasoning' | 'web-search' | 'image-generation') => {
 		if (integrationLongPressTimer) window.clearTimeout(integrationLongPressTimer);
 		integrationLongPressTriggered = false;
 		integrationLongPressTimer = window.setTimeout(() => {
@@ -326,6 +337,7 @@
 		webSearchMaxTotalResults,
 		webSearchContextSize,
 		openRouterCacheMode,
+		openRouterImageModel,
 		reasoningLevel: resolvedReasoningLevel,
 		codeInterpreterEnabled
 	});
@@ -802,15 +814,17 @@
 
 	let showWebSearchButton = false;
 	$: showWebSearchButton =
+		!directImageMode &&
 		selectedModelIds.length === webSearchCapableModels.length &&
 		$config?.features?.enable_web_search &&
 		($_user.role === 'admin' || $_user?.permissions?.features?.web_search);
 
 	let showImageGenerationButton = false;
 	$: showImageGenerationButton =
-		selectedModelIds.length === imageGenerationCapableModels.length &&
-		$config?.features?.enable_image_generation &&
-		($_user.role === 'admin' || $_user?.permissions?.features?.image_generation);
+		openRouterImageAvailable ||
+		(selectedModelIds.length === imageGenerationCapableModels.length &&
+			$config?.features?.enable_image_generation &&
+			($_user.role === 'admin' || $_user?.permissions?.features?.image_generation));
 
 	let showCodeInterpreterButton = false;
 	$: showCodeInterpreterButton =
@@ -1917,7 +1931,11 @@
 															navigator.maxTouchPoints > 0 ||
 															navigator.msMaxTouchPoints > 0
 														)}
-													placeholder={placeholder ? placeholder : $i18n.t('Send a Message')}
+													placeholder={placeholder
+														? placeholder
+														: directImageMode
+															? $i18n.t('Describe the image to create')
+															: $i18n.t('Send a Message')}
 													largeTextAsFile={($settings?.largeTextAsFile ?? false) && !shiftKey}
 													autocomplete={$config?.features?.enable_autocomplete_generation &&
 														($settings?.promptAutocomplete ?? false)}
@@ -2063,90 +2081,93 @@
 
 							<div class=" flex justify-between mt-0.5 mb-2 mx-0.5 max-w-full" dir="ltr">
 								<div class="ml-1 self-end flex items-center flex-1 min-w-0">
-									<InputMenu
-										bind:files
-										bind:pdfAttachmentMode
-										{allSelectedModelsExplicitlySupportVision}
-										selectedModels={selectedModelIds}
-										{fileUploadCapableModels}
-										{screenCaptureHandler}
-										{inputFilesHandler}
-										uploadFilesHandler={() => {
-											filesInputElement.click();
-										}}
-										uploadGoogleDriveHandler={async () => {
-											try {
-												const fileData = await createPicker();
-												if (fileData) {
-													const file = new File([fileData.blob], fileData.name, {
-														type: fileData.blob.type
-													});
-													await inputFilesHandler([file]);
-												} else {
-													console.log('No file was selected from Google Drive');
+									{#if !directImageMode}
+										<InputMenu
+											bind:files
+											bind:pdfAttachmentMode
+											{allSelectedModelsExplicitlySupportVision}
+											selectedModels={selectedModelIds}
+											{fileUploadCapableModels}
+											{screenCaptureHandler}
+											{inputFilesHandler}
+											uploadFilesHandler={() => {
+												filesInputElement.click();
+											}}
+											uploadGoogleDriveHandler={async () => {
+												try {
+													const fileData = await createPicker();
+													if (fileData) {
+														const file = new File([fileData.blob], fileData.name, {
+															type: fileData.blob.type
+														});
+														await inputFilesHandler([file]);
+													} else {
+														console.log('No file was selected from Google Drive');
+													}
+												} catch (error) {
+													console.error('Google Drive Error:', error);
+													toast.error(
+														$i18n.t('Error accessing Google Drive: {{error}}', {
+															error: error.message
+														})
+													);
 												}
-											} catch (error) {
-												console.error('Google Drive Error:', error);
-												toast.error(
-													$i18n.t('Error accessing Google Drive: {{error}}', {
-														error: error.message
-													})
-												);
-											}
-										}}
-										uploadOneDriveHandler={async (authorityType) => {
-											try {
-												const fileData = await pickAndDownloadFile(authorityType);
-												if (fileData) {
-													const file = new File([fileData.blob], fileData.name, {
-														type: fileData.blob.type || 'application/octet-stream'
-													});
-													await inputFilesHandler([file]);
-												} else {
-													console.log('No file was selected from OneDrive');
+											}}
+											uploadOneDriveHandler={async (authorityType) => {
+												try {
+													const fileData = await pickAndDownloadFile(authorityType);
+													if (fileData) {
+														const file = new File([fileData.blob], fileData.name, {
+															type: fileData.blob.type || 'application/octet-stream'
+														});
+														await inputFilesHandler([file]);
+													} else {
+														console.log('No file was selected from OneDrive');
+													}
+												} catch (error) {
+													console.error('OneDrive Error:', error);
 												}
-											} catch (error) {
-												console.error('OneDrive Error:', error);
-											}
-										}}
-										{onUpload}
-										onClose={async () => {
-											await tick();
+											}}
+											{onUpload}
+											onClose={async () => {
+												await tick();
 
-											const chatInput = document.getElementById('chat-input');
-											chatInput?.focus();
-										}}
-									>
-										<button
-											type="button"
-											id="input-menu-button"
-											class="bg-transparent hover:bg-gray-100 text-gray-700 dark:text-white dark:hover:bg-gray-800 rounded-full size-[1.875rem] flex justify-center items-center outline-hidden focus:outline-hidden shrink-0"
-											aria-label={$i18n.t('More')}
+												const chatInput = document.getElementById('chat-input');
+												chatInput?.focus();
+											}}
 										>
-											<PlusAlt className="size-5" />
-										</button>
-									</InputMenu>
+											<button
+												type="button"
+												id="input-menu-button"
+												class="bg-transparent hover:bg-gray-100 text-gray-700 dark:text-white dark:hover:bg-gray-800 rounded-full size-[1.875rem] flex justify-center items-center outline-hidden focus:outline-hidden shrink-0"
+												aria-label={$i18n.t('More')}
+											>
+												<PlusAlt className="size-5" />
+											</button>
+										</InputMenu>
+									{/if}
 
-									{#if reasoningControl || showWebSearchButton || showImageGenerationButton || showCodeInterpreterButton || showVoiceModeButton || showToolsButton || showSkillsButton || (toggleFilters && toggleFilters.length > 0)}
+									{#if (!directImageMode && reasoningControl) || showWebSearchButton || showImageGenerationButton || (!directImageMode && showCodeInterpreterButton) || (!directImageMode && showVoiceModeButton) || (!directImageMode && showToolsButton) || (!directImageMode && showSkillsButton) || (!directImageMode && toggleFilters && toggleFilters.length > 0)}
 										<div
 											class="flex self-center w-[1px] h-4 mx-1 bg-gray-200/50 dark:bg-gray-800/50 shrink-0"
 										/>
 									{/if}
 
 									<div class="flex flex-1 items-center min-w-0 overflow-x-auto scrollbar-none">
-										{#if reasoningControl || showWebSearchButton || showImageGenerationButton || showCodeInterpreterButton || showVoiceModeButton || showToolsButton || showSkillsButton || (toggleFilters && toggleFilters.length > 0)}
+										{#if (!directImageMode && reasoningControl) || showWebSearchButton || showImageGenerationButton || (!directImageMode && showCodeInterpreterButton) || (!directImageMode && showVoiceModeButton) || (!directImageMode && showToolsButton) || (!directImageMode && showSkillsButton) || (!directImageMode && toggleFilters && toggleFilters.length > 0)}
 											<IntegrationsMenu
 												bind:this={integrationsMenu}
 												selectedModels={selectedModelIds}
-												{reasoningControl}
+												reasoningControl={directImageMode ? null : reasoningControl}
 												{openRouterControl}
+												{openRouterImageAvailable}
 												reasoningLevel={resolvedReasoningLevel}
 												onReasoningLevelChange={setReasoningLevel}
 												{toggleFilters}
 												{showWebSearchButton}
 												{showImageGenerationButton}
-												{showCodeInterpreterButton}
-												{showVoiceModeButton}
+												showCodeInterpreterButton={!directImageMode && showCodeInterpreterButton}
+												showVoiceModeButton={!directImageMode && showVoiceModeButton}
 												bind:selectedToolIds
 												bind:selectedSkillIds
 												bind:selectedFilterIds
@@ -2157,6 +2178,7 @@
 												bind:webSearchMaxTotalResults
 												bind:webSearchContextSize
 												bind:openRouterCacheMode
+												bind:openRouterImageModel
 												bind:imageGenerationEnabled
 												bind:codeInterpreterEnabled
 												{onWebSearchToggle}
@@ -2313,7 +2335,7 @@
 												{/if}
 											{/each}
 
-											{#if reasoningControl && resolvedReasoningLevel}
+											{#if !directImageMode && reasoningControl && resolvedReasoningLevel}
 												<Tooltip
 													content={`${$i18n.t('Reasoning')}: ${resolvedReasoningLevel} · ${reasoningControl.levels[resolvedReasoningLevel]?.label}. ${$i18n.t('Tap to cycle')}; ${$i18n.t('hold for settings')}.`}
 													placement="top"
@@ -2444,16 +2466,29 @@
 
 								<div class="self-end flex space-x-1 mr-1 shrink-0 gap-[0.5px]">
 									<div class="flex min-w-0 max-w-[10rem] items-center sm:max-w-[13rem]">
-										<ModelSelector
-											bind:selectedModels
-											showSetDefault={!history?.currentId}
-											placement="auto"
-											align="end"
-											triggerClassName="items-center gap-1.5 rounded-lg pl-2 pr-1.5 py-1 text-[13px] font-normal text-gray-600 transition-colors duration-100 hover:bg-gray-50/40 hover:text-gray-700 dark:text-gray-300 dark:hover:bg-gray-800/40 dark:hover:text-gray-200"
-										/>
+										{#if directImageMode}
+											<button
+												type="button"
+												class="flex min-w-0 items-center gap-1.5 rounded-lg py-1 pl-2 pr-1.5 text-[13px] font-normal text-sky-700 transition-colors hover:bg-sky-50 dark:text-sky-200 dark:hover:bg-sky-900/30"
+												on:click={() => integrationsMenu?.openTab('image-generation')}
+											>
+												<Photo className="size-4 shrink-0" strokeWidth="1.75" />
+												<span class="truncate"
+													>{getOpenRouterImageModel(openRouterImageModel).shortLabel}</span
+												>
+											</button>
+										{:else}
+											<ModelSelector
+												bind:selectedModels
+												showSetDefault={!history?.currentId}
+												placement="auto"
+												align="end"
+												triggerClassName="items-center gap-1.5 rounded-lg pl-2 pr-1.5 py-1 text-[13px] font-normal text-gray-600 transition-colors duration-100 hover:bg-gray-50/40 hover:text-gray-700 dark:text-gray-300 dark:hover:bg-gray-800/40 dark:hover:text-gray-200"
+											/>
+										{/if}
 									</div>
 
-									{#if hasChatVariables}
+									{#if !directImageMode && hasChatVariables}
 										<Tooltip content={$i18n.t('Chat Variables')} placement="top">
 											<button
 												type="button"

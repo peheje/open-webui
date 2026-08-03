@@ -69,9 +69,11 @@
 	import type { ReasoningLevel } from '$lib/reasoning';
 	import type {
 		OpenRouterCacheMode,
+		OpenRouterImageModel,
 		OpenRouterSearchContextSize,
 		WebSearchEngine
 	} from '$lib/openrouter';
+	import { DEFAULT_OPENROUTER_IMAGE_MODEL, getOpenRouterImageModel } from '$lib/openrouter';
 	import { getOutputText } from './Messages/structuredOutput';
 
 	import {
@@ -100,6 +102,7 @@
 	import { getTools } from '$lib/apis/tools';
 	import { getSkills } from '$lib/apis/skills';
 	import { uploadFile } from '$lib/apis/files';
+	import { openRouterImageGenerations } from '$lib/apis/images';
 	import { createOpenAITextStream } from '$lib/apis/streaming';
 	import { getFunctions } from '$lib/apis/functions';
 	import { initiateOAuthRedirect } from '$lib/apis/configs';
@@ -309,6 +312,13 @@
 	let webSearchMaxTotalResults = 12;
 	let webSearchContextSize: OpenRouterSearchContextSize = 'medium';
 	let openRouterCacheMode: OpenRouterCacheMode = 'smart';
+	let openRouterImageModel: OpenRouterImageModel = DEFAULT_OPENROUTER_IMAGE_MODEL;
+	let openRouterImageAvailable = false;
+	$: openRouterImageAvailable = Boolean(
+		($user?.role === 'admin' || $user?.permissions?.features?.image_generation) &&
+		($config?.features?.enable_openrouter_image_generation ||
+			$models.some((model) => model?.info?.meta?.openrouter))
+	);
 	let codeInterpreterEnabled = false;
 	let webSearchActive = false;
 	let showWebSearchConfirm = false;
@@ -548,6 +558,7 @@
 		webSearchMaxTotalResults = 12;
 		webSearchContextSize = 'medium';
 		openRouterCacheMode = 'smart';
+		openRouterImageModel = DEFAULT_OPENROUTER_IMAGE_MODEL;
 		imageGenerationEnabled = false;
 
 		const storageChatInput = sessionStorage.getItem(
@@ -593,6 +604,7 @@
 						webSearchMaxTotalResults = input.webSearchMaxTotalResults ?? 12;
 						webSearchContextSize = input.webSearchContextSize ?? 'medium';
 						openRouterCacheMode = input.openRouterCacheMode ?? 'smart';
+						openRouterImageModel = input.openRouterImageModel ?? DEFAULT_OPENROUTER_IMAGE_MODEL;
 						if (input.reasoningLevel) {
 							params = { ...params, reasoning_level: input.reasoningLevel };
 						}
@@ -650,6 +662,7 @@
 		webSearchMaxTotalResults = 12;
 		webSearchContextSize = 'medium';
 		openRouterCacheMode = 'smart';
+		openRouterImageModel = DEFAULT_OPENROUTER_IMAGE_MODEL;
 		imageGenerationEnabled = false;
 		codeInterpreterEnabled = false;
 		prompt = '';
@@ -1365,6 +1378,7 @@
 				webSearchMaxTotalResults = 12;
 				webSearchContextSize = 'medium';
 				openRouterCacheMode = 'smart';
+				openRouterImageModel = DEFAULT_OPENROUTER_IMAGE_MODEL;
 				imageGenerationEnabled = false;
 				codeInterpreterEnabled = false;
 
@@ -1384,6 +1398,7 @@
 						webSearchMaxTotalResults = input.webSearchMaxTotalResults ?? 12;
 						webSearchContextSize = input.webSearchContextSize ?? 'medium';
 						openRouterCacheMode = input.openRouterCacheMode ?? 'smart';
+						openRouterImageModel = input.openRouterImageModel ?? DEFAULT_OPENROUTER_IMAGE_MODEL;
 						if (input.reasoningLevel) {
 							params = { ...params, reasoning_level: input.reasoningLevel };
 						}
@@ -2668,6 +2683,90 @@
 		}
 	};
 
+	const submitOpenRouterImagePrompt = async (inputContent: string) => {
+		const descriptor = getOpenRouterImageModel(openRouterImageModel);
+		const userMessageId = uuidv4();
+		const responseMessageId = uuidv4();
+		const parentId = history.currentId ?? null;
+		const timestamp = Math.floor(Date.now() / 1000);
+
+		const userMessage = {
+			id: userMessageId,
+			parentId,
+			childrenIds: [responseMessageId],
+			role: 'user',
+			content: inputContent,
+			timestamp,
+			models: selectedModels
+		};
+		const responseMessage: any = {
+			id: responseMessageId,
+			parentId: userMessageId,
+			childrenIds: [],
+			role: 'assistant',
+			content: '',
+			done: false,
+			model: `image:${descriptor.id}`,
+			modelName: descriptor.label,
+			modelIdx: 0,
+			timestamp,
+			imageGeneration: {
+				provider: 'openrouter',
+				model: descriptor.id
+			}
+		};
+
+		if (parentId && history.messages[parentId]) {
+			history.messages[parentId].childrenIds.push(userMessageId);
+		}
+		history.messages[userMessageId] = userMessage;
+		history.messages[responseMessageId] = responseMessage;
+		history.currentId = responseMessageId;
+		history = history;
+		await tick();
+		if (autoScroll) scrollToBottom();
+
+		let targetChatId = $chatId;
+		if (!targetChatId) {
+			targetChatId = await initChatHandler(history);
+		} else {
+			await saveChatHandler(targetChatId, history);
+		}
+
+		generating = true;
+		const controller = new AbortController();
+		generationController = controller;
+		try {
+			const result = await openRouterImageGenerations(localStorage.token, {
+				model: descriptor.id,
+				prompt: inputContent,
+				n: 1,
+				signal: controller.signal
+			});
+			responseMessage.files = result?.images ?? [];
+			responseMessage.usage = result?.usage ?? undefined;
+			responseMessage.done = true;
+		} catch (error) {
+			responseMessage.done = true;
+			if (error?.name === 'AbortError') {
+				responseMessage.content = $i18n.t('Image generation stopped.');
+			} else {
+				const content = error?.detail ?? error?.message ?? String(error);
+				responseMessage.error = { content };
+				toast.error(content);
+			}
+		} finally {
+			generating = false;
+			generationController = null;
+			history.messages[responseMessageId] = responseMessage;
+			history = history;
+			if (targetChatId) await saveChatHandler(targetChatId, history);
+			await refreshChatList(localStorage.token);
+			await tick();
+			if (autoScroll) scrollToBottom();
+		}
+	};
+
 	const submitHandler = async (userPrompt, { _raw = false } = {}) => {
 		console.log('submitHandler', userPrompt, $chatId);
 
@@ -2689,6 +2788,25 @@
 		}
 		if (String(userPrompt).trim() === '/fork') {
 			await handleForkChat();
+			return;
+		}
+
+		if (openRouterImageAvailable && imageGenerationEnabled) {
+			if (!String(userPrompt).trim()) {
+				toast.error($i18n.t('Please describe the image to create'));
+				return;
+			}
+			if (files.length > 0) {
+				toast.error($i18n.t('Image references are not supported in direct Image mode yet.'));
+				return;
+			}
+			if (generating || taskIds?.length) {
+				toast.warning($i18n.t('Wait for the current response to finish.'));
+				return;
+			}
+			messageInput?.setText('');
+			prompt = '';
+			await submitOpenRouterImagePrompt(String(userPrompt).trim());
 			return;
 		}
 
@@ -3986,6 +4104,7 @@
 										bind:webSearchMaxTotalResults
 										bind:webSearchContextSize
 										bind:openRouterCacheMode
+										bind:openRouterImageModel
 										reasoningLevel={params?.reasoning_level ?? null}
 										onReasoningLevelChange={(level: ReasoningLevel) => {
 											params = { ...params, reasoning_level: level };
@@ -4115,6 +4234,7 @@
 										bind:webSearchMaxTotalResults
 										bind:webSearchContextSize
 										bind:openRouterCacheMode
+										bind:openRouterImageModel
 										reasoningLevel={params?.reasoning_level ?? null}
 										onReasoningLevelChange={(level: ReasoningLevel) => {
 											params = { ...params, reasoning_level: level };
@@ -4171,6 +4291,7 @@
 									bind:webSearchMaxTotalResults
 									bind:webSearchContextSize
 									bind:openRouterCacheMode
+									bind:openRouterImageModel
 									reasoningLevel={params?.reasoning_level ?? null}
 									onReasoningLevelChange={(level: ReasoningLevel) => {
 										params = { ...params, reasoning_level: level };

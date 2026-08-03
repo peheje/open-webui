@@ -65,11 +65,12 @@
 	import FullHeightIframe from '$lib/components/common/FullHeightIframe.svelte';
 	import OutputEditView from './OutputEditView.svelte';
 	import { getOutputText, replaceOutputMessageText, type OutputItem } from './structuredOutput';
-	import { getOpenRouterSessionUrl } from '$lib/openrouter';
+	import { getOpenRouterImageModel, getOpenRouterSessionUrl } from '$lib/openrouter';
 
 	interface MessageType {
 		id: string;
 		model: string;
+		modelName?: string;
 		content: string;
 		output?: OutputItem[];
 		files?: { type: string; url: string }[];
@@ -90,6 +91,7 @@
 			query?: string;
 		};
 		done: boolean;
+		imageGeneration?: { provider: string; model: string };
 		usage?: unknown;
 		error?: boolean | { content: string };
 		sources?: string[];
@@ -181,6 +183,12 @@
 
 	let model = null;
 	$: model = $models.find((m) => m.id === message.model);
+	let imageGenerationModel = null;
+	let isImageGenerationResponse = false;
+	$: imageGenerationModel = message.imageGeneration?.model
+		? getOpenRouterImageModel(message.imageGeneration.model)
+		: null;
+	$: isImageGenerationResponse = Boolean(imageGenerationModel);
 	$: isOpenRouterResponse =
 		message.model?.startsWith('or.') || Boolean(model?.info?.meta?.openrouter);
 	let openRouterSessionSource = '';
@@ -676,7 +684,8 @@
 	>
 		<div class={`shrink-0 ltr:mr-2 rtl:ml-2 hidden @lg:flex mt-0.5 `}>
 			<ProfileImage
-				src={`${WEBUI_API_BASE_URL}/models/model/profile/image?id=${model?.id}&lang=${$i18n.language}`}
+				src={imageGenerationModel?.icon ??
+					`${WEBUI_API_BASE_URL}/models/model/profile/image?id=${model?.id}&lang=${$i18n.language}`}
 				className={'size-7 assistant-message-profile-image'}
 			/>
 		</div>
@@ -684,9 +693,12 @@
 		<div class="flex-auto w-0 pl-1 relative">
 			{#if !compactPreview}
 				<Name>
-					<Tooltip content={model?.name ?? message.model} placement="top-start">
+					<Tooltip
+						content={model?.name ?? message.modelName ?? message.model}
+						placement="top-start"
+					>
 						<span id="response-message-model-name" class="line-clamp-1 text-black dark:text-white">
-							{model?.name ?? message.model}
+							{model?.name ?? message.modelName ?? message.model}
 						</span>
 					</Tooltip>
 				</Name>
@@ -1333,7 +1345,7 @@
 										</Tooltip>
 									{/if}
 
-									{#if isLastMessage && ($user?.role === 'admin' || ($user?.permissions?.chat?.continue_response ?? true))}
+									{#if !isImageGenerationResponse && isLastMessage && ($user?.role === 'admin' || ($user?.permissions?.chat?.continue_response ?? true))}
 										<Tooltip content={$i18n.t('Continue Response')} placement="bottom">
 											<button
 												aria-label={$i18n.t('Continue Response')}
@@ -1401,7 +1413,7 @@
 										</Tooltip>
 									{/if}
 
-									{#if $user?.role === 'admin' || ($user?.permissions?.chat?.regenerate_response ?? true)}
+									{#if !isImageGenerationResponse && ($user?.role === 'admin' || ($user?.permissions?.chat?.regenerate_response ?? true))}
 										{#if $settings?.regenerateMenu ?? true}
 											<button
 												type="button"

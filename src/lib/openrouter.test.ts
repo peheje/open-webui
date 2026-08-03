@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { getOpenRouterSessionId, getOpenRouterSessionUrl } from './openrouter';
+import {
+	DEFAULT_OPENROUTER_IMAGE_MODEL,
+	getOpenRouterImageModel,
+	getOpenRouterSessionId,
+	getOpenRouterSessionUrl,
+	OPENROUTER_IMAGE_MODELS
+} from './openrouter';
 
 describe('OpenRouter session links', () => {
 	it('matches the backend session ID without requiring Web Crypto', async () => {
@@ -16,5 +22,18 @@ describe('OpenRouter session links', () => {
 	it('does not create a link without a chat ID', async () => {
 		await expect(getOpenRouterSessionId('')).resolves.toBeNull();
 		await expect(getOpenRouterSessionUrl('')).resolves.toBeNull();
+	});
+});
+
+describe('OpenRouter image models', () => {
+	it('has a curated unique catalog and a balanced default', () => {
+		const ids = OPENROUTER_IMAGE_MODELS.map((model) => model.id);
+		expect(new Set(ids).size).toBe(ids.length);
+		expect(ids).toContain(DEFAULT_OPENROUTER_IMAGE_MODEL);
+		expect(getOpenRouterImageModel(DEFAULT_OPENROUTER_IMAGE_MODEL).shortLabel).toBe('NB2');
+	});
+
+	it('falls back safely when a draft contains a removed model', () => {
+		expect(getOpenRouterImageModel('removed/model').id).toBe(DEFAULT_OPENROUTER_IMAGE_MODEL);
 	});
 });

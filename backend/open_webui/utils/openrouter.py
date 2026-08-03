@@ -23,6 +23,16 @@ OPENROUTER_SEARCH_ENGINES = {
 }
 OPENROUTER_SEARCH_CONTEXT_SIZES = {"low", "medium", "high"}
 OPENROUTER_CACHE_MODES = {"smart", "long", "provider_default"}
+OPENROUTER_IMAGE_MODELS = {
+    "google/gemini-3.1-flash-lite-image",
+    "google/gemini-3.1-flash-image",
+    "google/gemini-3-pro-image",
+    "openai/gpt-image-2",
+    "bytedance-seed/seedream-4.5",
+    "x-ai/grok-imagine-image-quality",
+    "black-forest-labs/flux.2-max",
+}
+DEFAULT_OPENROUTER_IMAGE_MODEL = "google/gemini-3.1-flash-image"
 
 
 def _as_dict(value: Any) -> dict:
@@ -114,6 +124,21 @@ def resolve_openrouter_search_parameters(options: Any) -> dict:
         parameters["excluded_domains"] = excluded_domains
 
     return parameters
+
+
+def resolve_openrouter_image_parameters(options: Any) -> dict:
+    """Validate the selected OpenRouter image service model.
+
+    Image endpoints expose different size, quality, and aspect-ratio controls.
+    Keep the first UI iteration deliberately portable and let each provider use
+    its own defaults; the selected model is the only universal parameter.
+    """
+
+    options = _as_dict(options)
+    model = options.get("model")
+    if model not in OPENROUTER_IMAGE_MODELS:
+        model = DEFAULT_OPENROUTER_IMAGE_MODEL
+    return {"model": model}
 
 
 def _openrouter_session_id(chat_id: Any) -> str | None:

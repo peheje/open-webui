@@ -2009,6 +2009,8 @@ async def get_app_config(request: Request):
         'code_execution.enable',
         'code_interpreter.enable',
         'image_generation.enable',
+        'openai.api_base_urls',
+        'openai.api_keys',
         'task.autocomplete.enable',
         'ui.enable_community_sharing',
         'ui.enable_message_rating',
@@ -2079,6 +2081,13 @@ async def get_app_config(request: Request):
                     'enable_code_execution': config.get('code_execution.enable'),
                     'enable_code_interpreter': config.get('code_interpreter.enable'),
                     'enable_image_generation': config.get('image_generation.enable'),
+                    'enable_openrouter_image_generation': any(
+                        isinstance(url, str)
+                        and url.rstrip('/') == 'https://openrouter.ai/api/v1'
+                        and index < len(config.get('openai.api_keys') or [])
+                        and bool((config.get('openai.api_keys') or [])[index])
+                        for index, url in enumerate(config.get('openai.api_base_urls') or [])
+                    ),
                     'enable_autocomplete_generation': config.get('task.autocomplete.enable'),
                     'enable_community_sharing': config.get('ui.enable_community_sharing'),
                     'enable_message_rating': config.get('ui.enable_message_rating'),

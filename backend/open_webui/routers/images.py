@@ -43,8 +43,12 @@ from open_webui.utils.images.comfyui import (
     comfyui_edit_image,
     comfyui_upload_image,
 )
+from open_webui.utils.openrouter import (
+    OPENROUTER_IMAGE_MODELS,
+    resolve_openrouter_image_parameters,
+)
 from open_webui.utils.session_pool import get_session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 log = logging.getLogger(__name__)
@@ -455,6 +459,38 @@ class CreateImageForm(BaseModel):
 GenerateImageForm = CreateImageForm  # Alias for backward compatibility
 
 
+class OpenRouterCreateImageForm(BaseModel):
+    model: str
+    prompt: str = Field(min_length=1, max_length=100_000)
+    n: int = Field(default=1, ge=1, le=4)
+
+
+async def get_openrouter_image_connection() -> tuple[str, dict]:
+    values = await Config.get_many(
+        'openai.api_base_urls',
+        'openai.api_keys',
+        'openai.api_configs',
+    )
+    base_urls = values.get('openai.api_base_urls') or []
+    api_keys = values.get('openai.api_keys') or []
+    api_configs = values.get('openai.api_configs') or {}
+
+    for index, base_url in enumerate(base_urls):
+        if not isinstance(base_url, str) or base_url.rstrip('/') != 'https://openrouter.ai/api/v1':
+            continue
+        key = api_keys[index] if index < len(api_keys) else ''
+        config = api_configs.get(str(index), api_configs.get(index, {}))
+        if isinstance(config, dict) and config.get('enable', True) is False:
+            continue
+        if isinstance(key, str) and key:
+            return key, config if isinstance(config, dict) else {}
+
+    raise HTTPException(
+        status_code=503,
+        detail='The OpenRouter connection is not configured.',
+    )
+
+
 def _is_same_origin(url: str, base_url: str) -> bool:
     """Compare scheme + hostname + port of two URLs.
 
@@ -587,6 +623,129 @@ async def generate_images(request: Request, form_data: CreateImageForm, user=Dep
         },
     )
     return result
+
+
+@router.post('/openrouter/generations')
+async def generate_openrouter_images(
+    request: Request,
+    form_data: OpenRouterCreateImageForm,
+    user=Depends(get_verified_user),
+):
+    """Generate and persist images through OpenRouter's dedicated Image API."""
+
+    user_permissions = await Config.get('user.permissions')
+    if user.role != 'admin' and not await has_permission(
+        user.id,
+        'features.image_generation',
+        user_permissions,
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
+        )
+
+    image_parameters = resolve_openrouter_image_parameters({'model': form_data.model})
+    model = image_parameters['model']
+    if form_data.model not in OPENROUTER_IMAGE_MODELS:
+        raise HTTPException(status_code=400, detail='Unsupported OpenRouter image model.')
+
+    api_key, connection_config = await get_openrouter_image_connection()
+    configured_headers = connection_config.get('headers') or {}
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+        'HTTP-Referer': configured_headers.get(
+            'HTTP-Referer',
+            'https://github.com/peheje/open-webui',
+        ),
+        'X-Title': configured_headers.get(
+            'X-Title',
+            configured_headers.get('X-OpenRouter-Title', 'S23 Open WebUI'),
+        ),
+    }
+    data = {
+        'model': model,
+        'prompt': form_data.prompt,
+        'n': form_data.n,
+    }
+
+    session = await get_session()
+    async with session.post(
+        url='https://openrouter.ai/api/v1/images',
+        json=data,
+        headers=headers,
+        ssl=AIOHTTP_CLIENT_SESSION_SSL,
+    ) as response:
+        try:
+            payload = await response.json(content_type=None)
+        except Exception:
+            payload = {}
+        if response.status >= 400:
+            upstream_error = payload.get('error') if isinstance(payload, dict) else None
+            if isinstance(upstream_error, dict):
+                detail = upstream_error.get('message') or 'OpenRouter image generation failed.'
+            else:
+                detail = str(upstream_error or 'OpenRouter image generation failed.')
+            raise HTTPException(
+                status_code=response.status if 400 <= response.status < 500 else 502,
+                detail=detail,
+            )
+
+    image_rows = payload.get('data') if isinstance(payload, dict) else None
+    if not isinstance(image_rows, list) or not image_rows:
+        raise HTTPException(status_code=502, detail='OpenRouter returned no images.')
+
+    images = []
+    for image in image_rows:
+        if not isinstance(image, dict) or not image.get('b64_json'):
+            continue
+        media_type = image.get('media_type') or 'image/png'
+        if media_type not in IMAGE_FILE_EXTENSIONS:
+            raise HTTPException(
+                status_code=502,
+                detail=f'Unsupported generated image type: {media_type}',
+            )
+        image_data, content_type = await get_image_data(
+            f'data:{media_type};base64,{image["b64_json"]}'
+        )
+        file_item, url = await upload_image(
+            request,
+            image_data,
+            content_type,
+            {'provider': 'openrouter', 'model': model},
+            user,
+        )
+        images.append(
+            {
+                'id': file_item.id,
+                'type': 'image',
+                'url': url,
+                'name': file_item.filename,
+                'content_type': content_type,
+            }
+        )
+
+    if not images:
+        raise HTTPException(status_code=502, detail='OpenRouter returned no usable images.')
+
+    await publish_event(
+        request,
+        EVENTS.IMAGE_GENERATED,
+        actor=user,
+        subject_id=None,
+        subject_type='image',
+        data={
+            'provider': 'openrouter',
+            'model': model,
+            'n': form_data.n,
+            'prompt_preview': form_data.prompt[:300],
+        },
+    )
+    return {
+        'model': model,
+        'images': images,
+        'usage': payload.get('usage') if isinstance(payload, dict) else None,
+    }
 
 
 async def image_generations(
