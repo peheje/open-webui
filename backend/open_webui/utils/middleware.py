@@ -70,6 +70,7 @@ from open_webui.routers.retrieval import (
 from open_webui.utils.web_search_config import resolve_web_search_engine
 from open_webui.utils.openrouter import (
     apply_openrouter_request,
+    model_supports_web_search,
     should_use_openrouter_search,
 )
 from open_webui.routers.tasks import (
@@ -2625,6 +2626,11 @@ async def process_chat_payload(request, form_data, user, metadata, model):
             raise Exception(f'{e}')
 
     features = form_data.pop('features', None) or {}
+    # Model capability metadata is authoritative at the provider boundary.
+    # This also neutralizes stale per-chat state and a global search default
+    # when the current model deliberately hides the generic search control.
+    if not model_supports_web_search(model):
+        features['web_search'] = False
     extra_params['__features__'] = features
     openrouter_search_enabled = should_use_openrouter_search(features, model)
     if features:

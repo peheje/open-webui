@@ -55,10 +55,30 @@ def is_openrouter_model(model: Any) -> bool:
     return get_openrouter_control(model) is not None
 
 
+def model_supports_web_search(model: Any) -> bool:
+    """Honor an explicit model capability opt-out for every search path.
+
+    The UI normally prevents unsupported models from enabling web search, but
+    old chats and a user's global default can still submit ``web_search=true``.
+    Treat the curated capability as the provider-boundary safety contract too.
+    """
+
+    model = _as_dict(model)
+    info = _as_dict(model.get("info"))
+    meta = _as_dict(info.get("meta"))
+    capabilities = _as_dict(meta.get("capabilities"))
+    return capabilities.get("web_search") is not False
+
+
 def should_use_openrouter_search(features: Any, model: Any) -> bool:
     features = _as_dict(features)
     control = get_openrouter_control(model)
-    return bool(control and control.get("web_search", True) and features.get("web_search"))
+    return bool(
+        control
+        and model_supports_web_search(model)
+        and control.get("web_search", True)
+        and features.get("web_search")
+    )
 
 
 def _bounded_int(value: Any, minimum: int, maximum: int) -> int | None:

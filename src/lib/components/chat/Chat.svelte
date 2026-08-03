@@ -73,7 +73,11 @@
 		OpenRouterSearchContextSize,
 		WebSearchEngine
 	} from '$lib/openrouter';
-	import { DEFAULT_OPENROUTER_IMAGE_MODEL, getOpenRouterImageModel } from '$lib/openrouter';
+	import {
+		DEFAULT_OPENROUTER_IMAGE_MODEL,
+		getOpenRouterImageModel,
+		selectedModelsSupportWebSearch
+	} from '$lib/openrouter';
 	import { getOutputText } from './Messages/structuredOutput';
 
 	import {
@@ -324,13 +328,23 @@
 	let showWebSearchConfirm = false;
 	let pendingWebSearchPrompt: string | null = null;
 	let webSearchConfirmed = false;
+	let selectedModelsAllowWebSearch = false;
+	$: selectedModelsAllowWebSearch = selectedModelsSupportWebSearch(
+		$models,
+		atSelectedModel?.id ? [atSelectedModel.id] : selectedModels.filter(Boolean)
+	);
 
 	$: {
 		webSearchActive = Boolean(
+			selectedModelsAllowWebSearch &&
 			$config?.features?.enable_web_search &&
 			($user?.role === 'admin' || $user?.permissions?.features?.web_search) &&
 			webSearchEnabled
 		);
+	}
+
+	$: if (!selectedModelsAllowWebSearch && webSearchEnabled) {
+		webSearchEnabled = false;
 	}
 
 	const openWebSearchConfirm = () => {
@@ -773,7 +787,9 @@
 			if (model) {
 				// "Always" is the default for a new chat, not an override of
 				// the per-chat toggle. This lets users explicitly turn search off.
-				webSearchEnabled = ($settings?.webSearch ?? false) === 'always';
+				webSearchEnabled =
+					selectedModelsSupportWebSearch($models, [model.id]) &&
+					($settings?.webSearch ?? false) === 'always';
 
 				// Set Default Tools
 				if (model?.info?.meta?.toolIds) {
