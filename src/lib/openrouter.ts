@@ -82,6 +82,12 @@ export type OpenRouterControl = {
 	cache_mode?: OpenRouterCacheMode;
 };
 
+export const selectedModelsSupportWebSearch = (models: Model[], selectedModelIds: string[]) =>
+	selectedModelIds.length > 0 &&
+	selectedModelIds.every(
+		(id) => models.find((model) => model.id === id)?.info?.meta?.capabilities?.web_search !== false
+	);
+
 export const getOpenRouterControlForModels = (
 	models: Model[],
 	selectedModelIds: string[]

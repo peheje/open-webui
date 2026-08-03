@@ -7,6 +7,7 @@ from open_webui.utils.openrouter import (
     apply_openrouter_request,
     finalize_openrouter_request,
     is_openrouter_model,
+    model_supports_web_search,
     resolve_openrouter_image_parameters,
     resolve_openrouter_search_parameters,
     should_use_openrouter_search,
@@ -48,6 +49,33 @@ def test_only_curated_openrouter_models_activate_gateway_features():
     assert not is_openrouter_model({"id": "di.sonnet5"})
     assert should_use_openrouter_search({"web_search": True}, OPENROUTER_MODEL)
     assert not should_use_openrouter_search({"web_search": False}, OPENROUTER_MODEL)
+
+
+def test_explicit_model_capability_disables_stale_search_requests():
+    model = {
+        "id": "or.gemini3.6f",
+        "info": {
+            "meta": {
+                "capabilities": {"web_search": False},
+                "openrouter": {
+                    "official_provider": "google-ai-studio",
+                    "web_search": True,
+                },
+            }
+        },
+    }
+    form_data = {"tools": []}
+
+    assert not model_supports_web_search(model)
+    assert not should_use_openrouter_search({"web_search": True}, model)
+    assert not apply_openrouter_request(
+        form_data,
+        {"web_search": True, "web_search_config": {"engine": "native"}},
+        model,
+        "chat-123",
+    )
+    assert form_data["tools"] == []
+    assert form_data["session_id"].startswith("owui-")
 
 
 def test_image_model_is_allowlisted_with_balanced_fallback():

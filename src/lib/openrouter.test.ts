@@ -5,7 +5,8 @@ import {
 	getOpenRouterImageModel,
 	getOpenRouterSessionId,
 	getOpenRouterSessionUrl,
-	OPENROUTER_IMAGE_MODELS
+	OPENROUTER_IMAGE_MODELS,
+	selectedModelsSupportWebSearch
 } from './openrouter';
 
 describe('OpenRouter session links', () => {
@@ -35,5 +36,18 @@ describe('OpenRouter image models', () => {
 
 	it('falls back safely when a draft contains a removed model', () => {
 		expect(getOpenRouterImageModel('removed/model').id).toBe(DEFAULT_OPENROUTER_IMAGE_MODEL);
+	});
+});
+
+describe('model web-search capability', () => {
+	const models = [
+		{ id: 'or.gemini3.6f', info: { meta: { capabilities: { web_search: false } } } },
+		{ id: 'or.grok45', info: { meta: { capabilities: { web_search: true } } } }
+	] as never[];
+
+	it('hides search when any selected model explicitly opts out', () => {
+		expect(selectedModelsSupportWebSearch(models, ['or.gemini3.6f'])).toBe(false);
+		expect(selectedModelsSupportWebSearch(models, ['or.grok45'])).toBe(true);
+		expect(selectedModelsSupportWebSearch(models, ['or.grok45', 'or.gemini3.6f'])).toBe(false);
 	});
 });
