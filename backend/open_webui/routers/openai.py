@@ -48,7 +48,12 @@ from open_webui.utils.misc import (
     convert_logit_bias_input_to_json,
     stream_chunks_handler,
 )
-from open_webui.utils.openrouter import finalize_openrouter_request
+from open_webui.utils.openrouter import (
+    MANAGED_SEARCH_STATE_KEY,
+    build_managed_search_fallback,
+    finalize_openrouter_request,
+    is_openrouter_server_tool_error,
+)
 from open_webui.utils.payload import (
     apply_model_params_to_body_openai,
     drop_empty_tools,
@@ -1255,6 +1260,7 @@ async def generate_chat_completion(
     # Curated model parameters are promoted at this provider boundary and can
     # reintroduce strict routing after middleware added an OpenRouter server
     # tool. Reconcile the final payload before it is sent upstream.
+    managed_search_state = payload.pop(MANAGED_SEARCH_STATE_KEY, None)
     finalize_openrouter_request(payload)
 
     # Check if model is already in app state cache to avoid expensive get_all_models() call
@@ -1352,7 +1358,8 @@ async def generate_chat_completion(
                     part.get('text', '') for part in message['content'] if part.get('type') in ('input_text', 'text')
                 )
 
-    payload = json.dumps(drop_empty_tools(payload))
+    payload_data = drop_empty_tools(payload)
+    payload = json.dumps(payload_data)
 
     r = None
     streaming = False
@@ -1370,6 +1377,33 @@ async def generate_chat_completion(
             ssl=AIOHTTP_CLIENT_SESSION_SSL,
             timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
         )
+
+        # OpenRouter occasionally rejects an external server-tool invocation
+        # before Gemini can answer an otherwise ordinary prompt. Retry that
+        # narrow, recoverable failure once without our managed search tool;
+        # explicit search prompts still complete on the first request.
+        if managed_search_state and r.status >= 400:
+            error_body = await r.text()
+            if is_openrouter_server_tool_error(error_body):
+                log.warning(
+                    'OpenRouter managed search failed for %s; retrying without the server tool',
+                    requested_model,
+                )
+                await cleanup_response(r)
+                fallback_data = build_managed_search_fallback(
+                    payload_data,
+                    managed_search_state,
+                )
+                payload = json.dumps(drop_empty_tools(fallback_data))
+                r = await session.request(
+                    method='POST',
+                    url=request_url,
+                    data=payload,
+                    headers=headers,
+                    cookies=cookies,
+                    ssl=AIOHTTP_CLIENT_SESSION_SSL,
+                    timeout=aiohttp.ClientTimeout(total=AIOHTTP_CLIENT_TIMEOUT),
+                )
 
         # Check if response is SSE
         if 'text/event-stream' in r.headers.get('Content-Type', ''):

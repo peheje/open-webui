@@ -33,6 +33,7 @@ OPENROUTER_IMAGE_MODELS = {
     "black-forest-labs/flux.2-max",
 }
 DEFAULT_OPENROUTER_IMAGE_MODEL = "google/gemini-3.1-flash-image"
+MANAGED_SEARCH_STATE_KEY = "_openrouter_managed_search_state"
 
 
 def _as_dict(value: Any) -> dict:
@@ -242,6 +243,42 @@ def finalize_openrouter_request(form_data: dict) -> None:
         _relax_external_search_provider_routing(form_data)
 
 
+def is_openrouter_server_tool_error(response: Any) -> bool:
+    """Recognize OpenRouter's recoverable external server-tool failure."""
+
+    if isinstance(response, (dict, list)):
+        response = str(response)
+    return isinstance(response, str) and "server tool request failed" in response.lower()
+
+
+def build_managed_search_fallback(form_data: dict, state: Any) -> dict:
+    """Remove only our managed search tool and restore the strict route."""
+
+    fallback = deepcopy(form_data)
+    tools = fallback.get("tools")
+    if isinstance(tools, list):
+        fallback["tools"] = [
+            tool
+            for tool in tools
+            if not (
+                isinstance(tool, dict)
+                and tool.get("type") == "openrouter:web_search"
+            )
+        ]
+
+    state = _as_dict(state)
+    if state.get("had_max_tool_calls"):
+        fallback["max_tool_calls"] = state.get("max_tool_calls")
+    else:
+        fallback.pop("max_tool_calls", None)
+
+    provider = fallback.get("provider")
+    if isinstance(provider, dict):
+        provider["require_parameters"] = True
+
+    return fallback
+
+
 def apply_openrouter_request(
     form_data: dict,
     features: Any,
@@ -268,6 +305,10 @@ def apply_openrouter_request(
         # Hidden model-managed search must not inherit a stale per-chat engine
         # such as ``native``. The curated defaults are the safety contract.
         search_options = _as_dict(control.get("search_defaults"))
+        form_data[MANAGED_SEARCH_STATE_KEY] = {
+            "had_max_tool_calls": "max_tool_calls" in form_data,
+            "max_tool_calls": deepcopy(form_data.get("max_tool_calls")),
+        }
     else:
         search_options = features.get("web_search_config")
     search_parameters = resolve_openrouter_search_parameters(search_options)
