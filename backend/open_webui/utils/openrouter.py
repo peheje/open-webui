@@ -73,11 +73,14 @@ def model_supports_web_search(model: Any) -> bool:
 def should_use_openrouter_search(features: Any, model: Any) -> bool:
     features = _as_dict(features)
     control = get_openrouter_control(model)
+    always_available = bool(control and control.get("always_web_search"))
     return bool(
         control
-        and model_supports_web_search(model)
         and control.get("web_search", True)
-        and features.get("web_search")
+        and (
+            always_available
+            or (model_supports_web_search(model) and features.get("web_search"))
+        )
     )
 
 
@@ -261,9 +264,17 @@ def apply_openrouter_request(
     if not should_use_openrouter_search(features, model):
         return False
 
-    search_parameters = resolve_openrouter_search_parameters(
-        features.get("web_search_config")
-    )
+    if control.get("always_web_search"):
+        # Hidden model-managed search must not inherit a stale per-chat engine
+        # such as ``native``. The curated defaults are the safety contract.
+        search_options = _as_dict(control.get("search_defaults"))
+    else:
+        search_options = features.get("web_search_config")
+    search_parameters = resolve_openrouter_search_parameters(search_options)
+
+    # ``max_uses`` is our UI-level tool-call budget, not a parameter accepted
+    # inside OpenRouter's server-tool object. Promote it to ``max_tool_calls``.
+    max_uses = search_parameters.pop("max_uses", None)
     # OpenRouter's external search engines currently fail before provider
     # selection when strict parameter compatibility is requested. Keep the
     # official-provider allow-list and disabled fallbacks, but let the gateway
@@ -293,7 +304,6 @@ def apply_openrouter_request(
 
     # OpenRouter counts all server-tool calls against this shared budget. A
     # pre-existing lower value remains authoritative.
-    max_uses = search_parameters.get("max_uses")
     if max_uses is not None:
         existing_budget = _bounded_int(form_data.get("max_tool_calls"), 1, 30)
         form_data["max_tool_calls"] = (

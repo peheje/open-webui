@@ -294,10 +294,67 @@ def test_openrouter_request_adds_agentic_search_and_sticky_session():
                 "engine": "parallel",
                 "max_results": 5,
                 "max_total_results": 12,
-                "max_uses": 3,
             },
         },
     ]
+
+
+def test_hidden_model_managed_search_uses_curated_external_engine():
+    model = {
+        "id": "or.gemini3.6f",
+        "info": {
+            "meta": {
+                "capabilities": {"web_search": False},
+                "openrouter": {
+                    "official_provider": "google-ai-studio",
+                    "web_search": True,
+                    "always_web_search": True,
+                    "search_defaults": {
+                        "engine": "exa",
+                        "max_results": 3,
+                        "max_total_results": 6,
+                        "max_characters": 2000,
+                        "max_uses": 2,
+                    },
+                },
+            }
+        },
+    }
+    form_data = {
+        "tools": [],
+        "provider": {
+            "only": ["google-ai-studio"],
+            "allow_fallbacks": False,
+            "require_parameters": True,
+        },
+    }
+
+    assert should_use_openrouter_search({"web_search": False}, model)
+    assert apply_openrouter_request(
+        form_data,
+        {
+            "web_search": True,
+            "web_search_config": {"engine": "native", "max_uses": 9},
+        },
+        model,
+        "chat-123",
+    )
+    assert form_data["tools"] == [
+        {
+            "type": "openrouter:web_search",
+            "parameters": {
+                "engine": "exa",
+                "max_results": 3,
+                "max_total_results": 6,
+                "max_characters": 2000,
+            },
+        }
+    ]
+    assert form_data["max_tool_calls"] == 2
+    assert form_data["provider"] == {
+        "only": ["google-ai-studio"],
+        "allow_fallbacks": False,
+    }
 
 
 def test_openrouter_search_tool_is_replaced_not_duplicated():
