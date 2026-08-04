@@ -57,13 +57,23 @@ Then read:
 As last verified, production returned HTTP 200, its LAN endpoint refused
 connections, the development server was stopped, and runit was healthy.
 
-## Pending: authorize the laptop for direct SSH
+## Laptop direct SSH enrollment
 
-The laptop must use its own key. It does not yet have access, but physical
-access to S23 is not required: S26 still has a verified authorized connection
-and can add the laptop's public key remotely.
+The laptop must use its own key. On 2026-08-04, S26 installed the laptop's
+public key in S23's `authorized_keys` and verified mode `0600`. The enrolled
+laptop-key fingerprint is:
 
-The Codex session running on the laptop should do the following locally:
+```text
+SHA256:atGe+e2Ke8773/TfsjDzpBvD0OA/JkrjBH/i90chSD8
+```
+
+The laptop-side host-key verification and direct SSH test remain to be run.
+Physical access to S23 is not required.
+
+If the laptop-local key is missing, the Codex session running there should
+create it as follows. If it already exists, do not replace it; confirm
+`ssh-keygen -lf ~/.ssh/s23u_ed25519.pub` matches the enrolled fingerprint
+above.
 
 ```bash
 install -d -m 0700 "$HOME/.ssh"
@@ -89,14 +99,14 @@ Rules:
 
 1. Show the user only the single line beginning with `ssh-ed25519`.
 2. Never show, transmit, copy, or commit `~/.ssh/s23u_ed25519`.
-3. Do not commit the public key to this repository either. Give it to the user
-   so the already-authorized S26 session can install it idempotently in
-   S23's `~/.ssh/authorized_keys`.
+3. Do not commit the public key to this repository either. For this laptop,
+   its fingerprint must match the enrolled fingerprint above. If it does not,
+   stop and give the correct public key to the user for S26 enrollment.
 4. Do not enable password login, reuse S26's private key, or use S26 as a
    permanent SSH hop.
 
-After S26 confirms enrollment, the laptop Codex should capture S23's host key
-and verify it before trusting it:
+The laptop Codex should now capture S23's host key and verify it before
+trusting it:
 
 ```bash
 ssh-keyscan -T 5 -p 8022 100.117.57.15 \
