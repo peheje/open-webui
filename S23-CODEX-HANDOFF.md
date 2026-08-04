@@ -57,6 +57,95 @@ Then read:
 As last verified, production returned HTTP 200, its LAN endpoint refused
 connections, the development server was stopped, and runit was healthy.
 
+## Pending: authorize the laptop for direct SSH
+
+The laptop must use its own key. It does not yet have access, but physical
+access to S23 is not required: S26 still has a verified authorized connection
+and can add the laptop's public key remotely.
+
+The Codex session running on the laptop should do the following locally:
+
+```bash
+install -d -m 0700 "$HOME/.ssh"
+
+if [ ! -f "$HOME/.ssh/s23u_ed25519" ]; then
+    ssh-keygen -t ed25519 \
+        -f "$HOME/.ssh/s23u_ed25519" \
+        -N '' \
+        -C 'peter-laptop-s23u'
+fi
+
+if [ ! -f "$HOME/.ssh/s23u_ed25519.pub" ]; then
+    ssh-keygen -y -f "$HOME/.ssh/s23u_ed25519" \
+        >"$HOME/.ssh/s23u_ed25519.pub"
+fi
+
+chmod 0600 "$HOME/.ssh/s23u_ed25519"
+chmod 0644 "$HOME/.ssh/s23u_ed25519.pub"
+cat "$HOME/.ssh/s23u_ed25519.pub"
+```
+
+Rules:
+
+1. Show the user only the single line beginning with `ssh-ed25519`.
+2. Never show, transmit, copy, or commit `~/.ssh/s23u_ed25519`.
+3. Do not commit the public key to this repository either. Give it to the user
+   so the already-authorized S26 session can install it idempotently in
+   S23's `~/.ssh/authorized_keys`.
+4. Do not enable password login, reuse S26's private key, or use S26 as a
+   permanent SSH hop.
+
+After S26 confirms enrollment, the laptop Codex should capture S23's host key
+and verify it before trusting it:
+
+```bash
+ssh-keyscan -T 5 -p 8022 100.117.57.15 \
+    >"$HOME/.ssh/s23u_known_hosts.pending"
+ssh-keygen -lf "$HOME/.ssh/s23u_known_hosts.pending"
+```
+
+The ED25519 line must match this fingerprint, independently verified through
+S26 on 2026-08-04:
+
+```text
+SHA256:mcJfnfXI/F0+kb/jmcYKjpI4LO1rVh/ctxh9bzs7DnA
+```
+
+Only after it matches:
+
+```bash
+mv "$HOME/.ssh/s23u_known_hosts.pending" \
+    "$HOME/.ssh/s23u_known_hosts"
+chmod 0600 "$HOME/.ssh/s23u_known_hosts"
+```
+
+Add this laptop-local SSH configuration:
+
+```sshconfig
+Host s23u galaxy-s23-ultra
+    HostName 100.117.57.15
+    User u0_a351
+    Port 8022
+    IdentityFile ~/.ssh/s23u_ed25519
+    IdentitiesOnly yes
+    BatchMode yes
+    ConnectTimeout 10
+    ServerAliveInterval 30
+    ServerAliveCountMax 3
+    StrictHostKeyChecking yes
+    UserKnownHostsFile ~/.ssh/s23u_known_hosts
+```
+
+Then test the intended zero-hop path:
+
+```bash
+ssh s23u 'printf "laptop_to_s23=ok\n"; id -un'
+```
+
+Expected user is `u0_a351`. Stop and report the exact error if enrollment,
+fingerprint verification, or the direct test fails; do not weaken SSH policy
+to make the test pass.
+
 ## Current deployed revisions
 
 The deployed frontend and backend are deliberately tracked separately:
