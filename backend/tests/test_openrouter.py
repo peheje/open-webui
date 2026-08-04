@@ -381,6 +381,9 @@ def test_managed_search_server_tool_failure_has_strict_tool_free_fallback():
     assert is_openrouter_server_tool_error(
         {"error": {"message": "Server tool request failed"}}
     )
+    assert is_openrouter_server_tool_error(
+        {"error": {"message": "Internal Server Error", "code": 500}}
+    )
     assert not is_openrouter_server_tool_error({"error": "rate limited"})
     assert build_managed_search_fallback(
         payload,

@@ -248,7 +248,16 @@ def is_openrouter_server_tool_error(response: Any) -> bool:
 
     if isinstance(response, (dict, list)):
         response = str(response)
-    return isinstance(response, str) and "server tool request failed" in response.lower()
+    if not isinstance(response, str):
+        return False
+    normalized = response.lower()
+    return any(
+        message in normalized
+        for message in (
+            "server tool request failed",
+            "internal server error",
+        )
+    )
 
 
 def build_managed_search_fallback(form_data: dict, state: Any) -> dict:
