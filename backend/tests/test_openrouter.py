@@ -4,8 +4,11 @@ from types import SimpleNamespace
 from open_webui.utils import middleware as middleware_utils
 from open_webui.routers import images as image_router
 from open_webui.utils.openrouter import (
+    MANAGED_SEARCH_STATE_KEY,
     apply_openrouter_request,
+    build_managed_search_fallback,
     finalize_openrouter_request,
+    is_openrouter_server_tool_error,
     is_openrouter_model,
     model_supports_web_search,
     resolve_openrouter_image_parameters,
@@ -354,6 +357,44 @@ def test_hidden_model_managed_search_uses_curated_external_engine():
     assert form_data["provider"] == {
         "only": ["google-ai-studio"],
         "allow_fallbacks": False,
+    }
+    assert form_data[MANAGED_SEARCH_STATE_KEY] == {
+        "had_max_tool_calls": False,
+        "max_tool_calls": None,
+    }
+
+
+def test_managed_search_server_tool_failure_has_strict_tool_free_fallback():
+    payload = {
+        "model": "google/gemini-3.6-flash",
+        "tools": [
+            {"type": "function", "function": {"name": "calculator"}},
+            {"type": "openrouter:web_search", "parameters": {"engine": "exa"}},
+        ],
+        "max_tool_calls": 2,
+        "provider": {
+            "only": ["google-ai-studio"],
+            "allow_fallbacks": False,
+        },
+    }
+
+    assert is_openrouter_server_tool_error(
+        {"error": {"message": "Server tool request failed"}}
+    )
+    assert not is_openrouter_server_tool_error({"error": "rate limited"})
+    assert build_managed_search_fallback(
+        payload,
+        {"had_max_tool_calls": False, "max_tool_calls": None},
+    ) == {
+        "model": "google/gemini-3.6-flash",
+        "tools": [
+            {"type": "function", "function": {"name": "calculator"}},
+        ],
+        "provider": {
+            "only": ["google-ai-studio"],
+            "allow_fallbacks": False,
+            "require_parameters": True,
+        },
     }
 
 
