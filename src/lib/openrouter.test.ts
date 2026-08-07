@@ -2,17 +2,20 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	DEFAULT_OPENROUTER_IMAGE_MODEL,
+	getNextOpenRouterRoutingMode,
 	getOpenRouterImageModel,
+	getOpenRouterRoutingMode,
 	getOpenRouterSessionId,
 	getOpenRouterSessionUrl,
 	OPENROUTER_IMAGE_MODELS,
+	resolveOpenRouterRoutingMode,
 	selectedModelsSupportWebSearch
 } from './openrouter';
 
 describe('OpenRouter session links', () => {
 	it('matches the backend session ID without requiring Web Crypto', async () => {
 		const chatId = 'a3d4cc3e-e73e-425a-ba4a-6edfd1e9b6a0';
-		const sessionId = 'owui-2bb4bf89dd5f8552efccf3cbb27d5bb2c0e2b704';
+		const sessionId = 'owui-1f02306dcbc5f069835848d1f4c4f7c2c66b2c5d';
 
 		await expect(getOpenRouterSessionId(chatId)).resolves.toBe(sessionId);
 		await expect(getOpenRouterSessionUrl(chatId)).resolves.toBe(
@@ -20,9 +23,36 @@ describe('OpenRouter session links', () => {
 		);
 	});
 
+	it('uses separate sticky sessions for each routing mode', async () => {
+		const chatId = 'a3d4cc3e-e73e-425a-ba4a-6edfd1e9b6a0';
+		const sessionIds = await Promise.all([
+			getOpenRouterSessionId(chatId, 'official'),
+			getOpenRouterSessionId(chatId, 'fast'),
+			getOpenRouterSessionId(chatId, 'cheap')
+		]);
+		expect(new Set(sessionIds).size).toBe(3);
+	});
+
 	it('does not create a link without a chat ID', async () => {
 		await expect(getOpenRouterSessionId('')).resolves.toBeNull();
 		await expect(getOpenRouterSessionUrl('')).resolves.toBeNull();
+	});
+});
+
+describe('OpenRouter routing controls', () => {
+	const control = {
+		official_provider: 'deepseek',
+		default_routing_mode: 'official',
+		routing_modes: ['official', 'fast', 'cheap']
+	} as const;
+
+	it('validates stored modes and cycles through curated choices', () => {
+		expect(resolveOpenRouterRoutingMode(control as never, 'cheap')).toBe('cheap');
+		expect(resolveOpenRouterRoutingMode(control as never, 'invalid')).toBe('official');
+		expect(getNextOpenRouterRoutingMode(control as never, 'official')).toBe('fast');
+		expect(getNextOpenRouterRoutingMode(control as never, 'fast')).toBe('cheap');
+		expect(getNextOpenRouterRoutingMode(control as never, 'cheap')).toBe('official');
+		expect(getOpenRouterRoutingMode('cheap').label).toBe('Cheap');
 	});
 });
 

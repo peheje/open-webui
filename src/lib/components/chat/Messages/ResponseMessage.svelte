@@ -65,7 +65,11 @@
 	import FullHeightIframe from '$lib/components/common/FullHeightIframe.svelte';
 	import OutputEditView from './OutputEditView.svelte';
 	import { getOutputText, replaceOutputMessageText, type OutputItem } from './structuredOutput';
-	import { getOpenRouterImageModel, getOpenRouterSessionUrl } from '$lib/openrouter';
+	import {
+		getOpenRouterImageModel,
+		getOpenRouterSessionUrl,
+		type OpenRouterRoutingMode
+	} from '$lib/openrouter';
 
 	interface MessageType {
 		id: string;
@@ -76,6 +80,7 @@
 		files?: { type: string; url: string }[];
 		timestamp: number;
 		role: string;
+		openRouterRoutingMode?: OpenRouterRoutingMode;
 		statusHistory?: {
 			done: boolean;
 			action: string;
@@ -196,7 +201,7 @@
 	$: openRouterSessionSource = isOpenRouterResponse && chatId ? chatId : '';
 	$: if (openRouterSessionSource) {
 		const source = openRouterSessionSource;
-		getOpenRouterSessionUrl(source).then((url) => {
+		getOpenRouterSessionUrl(source, message.openRouterRoutingMode ?? 'official').then((url) => {
 			if (openRouterSessionSource === source) openRouterSessionUrl = url;
 		});
 	} else {

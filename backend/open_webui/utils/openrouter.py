@@ -23,6 +23,7 @@ OPENROUTER_SEARCH_ENGINES = {
 }
 OPENROUTER_SEARCH_CONTEXT_SIZES = {"low", "medium", "high"}
 OPENROUTER_CACHE_MODES = {"smart", "long", "provider_default"}
+OPENROUTER_ROUTING_MODES = {"official", "fast", "cheap"}
 OPENROUTER_IMAGE_MODELS = {
     "google/gemini-3.1-flash-lite-image",
     "google/gemini-3.1-flash-image",
@@ -34,6 +35,7 @@ OPENROUTER_IMAGE_MODELS = {
 }
 DEFAULT_OPENROUTER_IMAGE_MODEL = "google/gemini-3.1-flash-image"
 MANAGED_SEARCH_STATE_KEY = "_openrouter_managed_search_state"
+ROUTING_STATE_KEY = "_openrouter_routing_state"
 
 
 def _as_dict(value: Any) -> dict:
@@ -165,11 +167,61 @@ def resolve_openrouter_image_parameters(options: Any) -> dict:
     return {"model": model}
 
 
-def _openrouter_session_id(chat_id: Any) -> str | None:
+def resolve_openrouter_routing_mode(features: Any, control: Any) -> str:
+    """Return a validated logical routing choice for a curated OR model."""
+
+    features = _as_dict(features)
+    control = _as_dict(control)
+    options = _as_dict(features.get("openrouter_routing_config"))
+    mode = options.get("mode", control.get("default_routing_mode", "official"))
+    advertised_modes = control.get("routing_modes")
+    if not isinstance(advertised_modes, list):
+        advertised_modes = ["official"]
+    allowed_modes = {
+        item
+        for item in advertised_modes
+        if isinstance(item, str) and item in OPENROUTER_ROUTING_MODES
+    }
+    return mode if mode in allowed_modes else "official"
+
+
+def _openrouter_session_id(chat_id: Any, routing_mode: str = "official") -> str | None:
     if not isinstance(chat_id, str) or not chat_id:
         return None
-    digest = hashlib.sha256(chat_id.encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(f"{chat_id}:{routing_mode}".encode("utf-8")).hexdigest()
     return f"owui-{digest[:40]}"
+
+
+def _routing_provider_config(mode: str, official_provider: Any) -> dict:
+    if mode == "fast":
+        return {
+            "sort": "throughput",
+            "allow_fallbacks": True,
+            "require_parameters": True,
+        }
+    if mode == "cheap":
+        return {
+            "sort": "price",
+            "allow_fallbacks": True,
+            "require_parameters": True,
+        }
+    if not isinstance(official_provider, str) or not official_provider:
+        return {}
+    return {
+        "only": [official_provider],
+        "allow_fallbacks": False,
+        "require_parameters": True,
+    }
+
+
+def _apply_final_routing(form_data: dict, state: Any) -> None:
+    state = _as_dict(state)
+    provider = _routing_provider_config(
+        state.get("mode", "official"),
+        state.get("official_provider"),
+    )
+    if provider:
+        form_data["provider"] = provider
 
 
 def _apply_prompt_caching(
@@ -217,13 +269,15 @@ def _relax_external_search_provider_routing(form_data: dict) -> None:
         provider.pop("require_parameters", None)
 
 
-def finalize_openrouter_request(form_data: dict) -> None:
+def finalize_openrouter_request(form_data: dict, routing_state: Any = None) -> None:
     """Apply compatibility changes after model parameters reach the payload.
 
     Open WebUI promotes curated model parameters more than once. This final
     provider-boundary pass prevents the strict flag from being reintroduced
     after the server tool was assembled.
     """
+
+    _apply_final_routing(form_data, routing_state)
 
     tools = form_data.get("tools")
     if not isinstance(tools, list):
@@ -301,7 +355,12 @@ def apply_openrouter_request(
         return False
 
     features = _as_dict(features)
-    session_id = _openrouter_session_id(chat_id)
+    routing_mode = resolve_openrouter_routing_mode(features, control)
+    form_data[ROUTING_STATE_KEY] = {
+        "mode": routing_mode,
+        "official_provider": control.get("official_provider"),
+    }
+    session_id = _openrouter_session_id(chat_id, routing_mode)
     if session_id:
         form_data["session_id"] = session_id
 

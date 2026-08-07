@@ -50,6 +50,7 @@ from open_webui.utils.misc import (
 )
 from open_webui.utils.openrouter import (
     MANAGED_SEARCH_STATE_KEY,
+    ROUTING_STATE_KEY,
     build_managed_search_fallback,
     finalize_openrouter_request,
     is_openrouter_server_tool_error,
@@ -1261,7 +1262,8 @@ async def generate_chat_completion(
     # reintroduce strict routing after middleware added an OpenRouter server
     # tool. Reconcile the final payload before it is sent upstream.
     managed_search_state = payload.pop(MANAGED_SEARCH_STATE_KEY, None)
-    finalize_openrouter_request(payload)
+    routing_state = payload.pop(ROUTING_STATE_KEY, None)
+    finalize_openrouter_request(payload, routing_state)
 
     # Check if model is already in app state cache to avoid expensive get_all_models() call
     models = request.app.state.OPENAI_MODELS

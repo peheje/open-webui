@@ -36,17 +36,21 @@
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
 	import LinkSlash from '$lib/components/icons/LinkSlash.svelte';
 	import LightBulb from '$lib/components/icons/LightBulb.svelte';
+	import Bolt from '$lib/components/icons/Bolt.svelte';
 	import Voice from '$lib/components/icons/Voice.svelte';
 	import { REASONING_LEVEL_IDS, type ReasoningControl, type ReasoningLevel } from '$lib/reasoning';
 	import {
 		LOCAL_SEARCH_ENGINES,
 		OPENROUTER_IMAGE_MODELS,
+		OPENROUTER_ROUTING_MODES,
 		OPENROUTER_SEARCH_ENGINES,
 		getOpenRouterImageModel,
+		getOpenRouterRoutingMode,
 		type OpenRouterCacheMode,
 		type OpenRouterControl,
 		type OpenRouterImageModel,
 		type OpenRouterSearchContextSize,
+		type OpenRouterRoutingMode,
 		type WebSearchEngine
 	} from '$lib/openrouter';
 
@@ -70,6 +74,7 @@
 	export let webSearchMaxTotalResults = 12;
 	export let webSearchContextSize: OpenRouterSearchContextSize = 'medium';
 	export let openRouterCacheMode: OpenRouterCacheMode = 'smart';
+	export let openRouterRoutingMode: OpenRouterRoutingMode = 'official';
 	export let openRouterImageModel: OpenRouterImageModel = 'google/gemini-3.1-flash-image';
 	export let openRouterImageAvailable = false;
 	export let openRouterControl: OpenRouterControl | null = null;
@@ -85,6 +90,7 @@
 	export let onClose: Function;
 	export let onWebSearchToggle: Function = () => {};
 	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
+	export let onOpenRouterRoutingModeChange: (mode: OpenRouterRoutingMode) => void = () => {};
 	export let onVoiceMode: () => void = () => {};
 	export let closeOnOutsideClick = true;
 
@@ -146,8 +152,9 @@
 	let show = false;
 	let tab = '';
 
-	export function openTab(target: 'reasoning' | 'web-search' | 'image-generation') {
+	export function openTab(target: 'reasoning' | 'routing' | 'web-search' | 'image-generation') {
 		if (target === 'reasoning' && !reasoningControl) return;
+		if (target === 'routing' && !openRouterControl) return;
 		if (target === 'web-search' && !showWebSearchButton) return;
 		if (target === 'image-generation' && (!showImageGenerationButton || !openRouterImageAvailable))
 			return;
@@ -385,6 +392,33 @@
 						</Tooltip>
 					{/if}
 
+					{#if openRouterControl}
+						<Tooltip
+							content={$i18n.t('Choose how OpenRouter selects a provider')}
+							placement="top-start"
+						>
+							<button
+								class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-2 text-[13px] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+								on:click={() => {
+									tab = 'routing';
+								}}
+							>
+								<div class="flex-1 truncate">
+									<div class="flex flex-1 gap-2 items-center">
+										<div class="shrink-0">
+											<Bolt className="size-3.5" strokeWidth="1.75" />
+										</div>
+										<div class="truncate">{$i18n.t('Routing')}</div>
+									</div>
+								</div>
+								<div class="flex shrink-0 items-center gap-1 text-gray-500">
+									<span>{getOpenRouterRoutingMode(openRouterRoutingMode).label}</span>
+									<ChevronRight />
+								</div>
+							</button>
+						</Tooltip>
+					{/if}
+
 					{#if showWebSearchButton}
 						<Tooltip content={$i18n.t('Search the internet')} placement="top-start">
 							<button
@@ -565,6 +599,58 @@
 							{reasoningControl.levels[reasoningLevel]?.description ??
 								$i18n.t('Provider-tested reasoning preset for this model.')}
 						</p>
+					</div>
+				</div>
+			{:else if tab === 'routing' && openRouterControl}
+				<div in:fly={{ x: 20, duration: 150 }} class="space-y-2 px-1 pb-1">
+					<button
+						class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-1 text-[13px] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+						on:click={() => {
+							tab = '';
+						}}
+					>
+						<ChevronLeft />
+						<div class="flex w-full items-center justify-between">
+							<span>{$i18n.t('OpenRouter routing')}</span>
+						</div>
+					</button>
+
+					<div class="px-2">
+						<div class="mb-1 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+							{$i18n.t('Provider choice')}
+						</div>
+						<div class="grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
+							{#each OPENROUTER_ROUTING_MODES.filter( (mode) => (openRouterControl?.routing_modes ?? ['official']).includes(mode.id) ) as mode (mode.id)}
+								<button
+									type="button"
+									class="relative overflow-hidden rounded-lg border border-transparent px-1 py-1 text-[11px] {openRouterRoutingMode ===
+									mode.id
+										? 'font-semibold text-gray-900 dark:text-white'
+										: 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}"
+									aria-pressed={openRouterRoutingMode === mode.id}
+									on:click={() => {
+										openRouterRoutingMode = mode.id;
+										onOpenRouterRoutingModeChange(mode.id);
+									}}
+								>
+									{#if openRouterRoutingMode === mode.id}
+										<span
+											aria-hidden="true"
+											class="pointer-events-none absolute inset-0 rounded-lg border border-violet-300 bg-violet-100 dark:border-violet-700 dark:bg-violet-900/70"
+										></span>
+									{/if}
+									<span class="relative z-10">{mode.label}</span>
+								</button>
+							{/each}
+						</div>
+						<p class="mt-1.5 text-[10px] leading-4 text-gray-500">
+							{getOpenRouterRoutingMode(openRouterRoutingMode).description}
+						</p>
+						{#if openRouterRoutingMode !== 'official'}
+							<p class="mt-1 text-[10px] leading-4 text-amber-700 dark:text-amber-300">
+								{$i18n.t('May use a third-party endpoint; capabilities and caching can vary.')}
+							</p>
+						{/if}
 					</div>
 				</div>
 			{:else if tab === 'web-search'}

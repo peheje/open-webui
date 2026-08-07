@@ -30,6 +30,7 @@
 	import type { ReasoningLevel } from '$lib/reasoning';
 	import type {
 		OpenRouterCacheMode,
+		OpenRouterRoutingMode,
 		OpenRouterSearchContextSize,
 		WebSearchEngine
 	} from '$lib/openrouter';
@@ -66,6 +67,8 @@
 	export let webSearchMaxTotalResults = 12;
 	export let webSearchContextSize: OpenRouterSearchContextSize = 'medium';
 	export let openRouterCacheMode: OpenRouterCacheMode = 'smart';
+	export let openRouterRoutingMode: OpenRouterRoutingMode = 'official';
+	export let onOpenRouterRoutingModeChange: (mode: OpenRouterRoutingMode) => void = () => {};
 	export let reasoningLevel: ReasoningLevel | null = null;
 	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
 
@@ -246,6 +249,8 @@
 						bind:webSearchMaxTotalResults
 						bind:webSearchContextSize
 						bind:openRouterCacheMode
+						bind:openRouterRoutingMode
+						{onOpenRouterRoutingModeChange}
 						bind:reasoningLevel
 						{onReasoningLevelChange}
 						bind:atSelectedModel

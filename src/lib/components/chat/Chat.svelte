@@ -70,6 +70,7 @@
 	import type {
 		OpenRouterCacheMode,
 		OpenRouterImageModel,
+		OpenRouterRoutingMode,
 		OpenRouterSearchContextSize,
 		WebSearchEngine
 	} from '$lib/openrouter';
@@ -316,7 +317,10 @@
 	let webSearchMaxTotalResults = 12;
 	let webSearchContextSize: OpenRouterSearchContextSize = 'medium';
 	let openRouterCacheMode: OpenRouterCacheMode = 'smart';
+	let openRouterRoutingMode: OpenRouterRoutingMode = 'official';
 	let openRouterImageModel: OpenRouterImageModel = DEFAULT_OPENROUTER_IMAGE_MODEL;
+	const normalizeOpenRouterRoutingMode = (mode: unknown): OpenRouterRoutingMode =>
+		mode === 'fast' || mode === 'cheap' ? mode : 'official';
 	let openRouterImageAvailable = false;
 	$: openRouterImageAvailable = Boolean(
 		($user?.role === 'admin' || $user?.permissions?.features?.image_generation) &&
@@ -572,6 +576,7 @@
 		webSearchMaxTotalResults = 12;
 		webSearchContextSize = 'medium';
 		openRouterCacheMode = 'smart';
+		openRouterRoutingMode = 'official';
 		openRouterImageModel = DEFAULT_OPENROUTER_IMAGE_MODEL;
 		imageGenerationEnabled = false;
 
@@ -618,6 +623,12 @@
 						webSearchMaxTotalResults = input.webSearchMaxTotalResults ?? 12;
 						webSearchContextSize = input.webSearchContextSize ?? 'medium';
 						openRouterCacheMode = input.openRouterCacheMode ?? 'smart';
+						openRouterRoutingMode = normalizeOpenRouterRoutingMode(
+							input.openRouterRoutingMode ?? params?.openrouter_routing_mode
+						);
+						if (input.openRouterRoutingMode) {
+							params = { ...params, openrouter_routing_mode: openRouterRoutingMode };
+						}
 						openRouterImageModel = input.openRouterImageModel ?? DEFAULT_OPENROUTER_IMAGE_MODEL;
 						if (input.reasoningLevel) {
 							params = { ...params, reasoning_level: input.reasoningLevel };
@@ -676,6 +687,7 @@
 		webSearchMaxTotalResults = 12;
 		webSearchContextSize = 'medium';
 		openRouterCacheMode = 'smart';
+		openRouterRoutingMode = 'official';
 		openRouterImageModel = DEFAULT_OPENROUTER_IMAGE_MODEL;
 		imageGenerationEnabled = false;
 		codeInterpreterEnabled = false;
@@ -750,6 +762,7 @@
 		webSearchEnabled = false;
 		imageGenerationEnabled = false;
 		codeInterpreterEnabled = false;
+		openRouterRoutingMode = 'official';
 
 		if (selectedModelIds.filter((id) => id).length > 0) {
 			await setDefaults();
@@ -1394,6 +1407,7 @@
 				webSearchMaxTotalResults = 12;
 				webSearchContextSize = 'medium';
 				openRouterCacheMode = 'smart';
+				openRouterRoutingMode = 'official';
 				openRouterImageModel = DEFAULT_OPENROUTER_IMAGE_MODEL;
 				imageGenerationEnabled = false;
 				codeInterpreterEnabled = false;
@@ -1414,6 +1428,12 @@
 						webSearchMaxTotalResults = input.webSearchMaxTotalResults ?? 12;
 						webSearchContextSize = input.webSearchContextSize ?? 'medium';
 						openRouterCacheMode = input.openRouterCacheMode ?? 'smart';
+						openRouterRoutingMode = normalizeOpenRouterRoutingMode(
+							input.openRouterRoutingMode ?? params?.openrouter_routing_mode
+						);
+						if (input.openRouterRoutingMode) {
+							params = { ...params, openrouter_routing_mode: openRouterRoutingMode };
+						}
 						openRouterImageModel = input.openRouterImageModel ?? DEFAULT_OPENROUTER_IMAGE_MODEL;
 						if (input.reasoningLevel) {
 							params = { ...params, reasoning_level: input.reasoningLevel };
@@ -2076,6 +2096,7 @@
 
 				params = structuredClone(chatContent?.params ?? {});
 				delete params.note_id;
+				openRouterRoutingMode = normalizeOpenRouterRoutingMode(params?.openrouter_routing_mode);
 				chatFiles = structuredClone(chatContent?.files ?? []);
 
 				// Load tasks from chat-level DB field
@@ -2975,6 +2996,7 @@
 					model: model.id,
 					modelName: model.name ?? model.id,
 					modelIdx: modelIdx ? modelIdx : _modelIdx,
+					openRouterRoutingMode,
 					timestamp: Math.floor(Date.now() / 1000) // Unix epoch
 				};
 
@@ -3106,6 +3128,9 @@
 				},
 				openrouter_cache_config: {
 					mode: openRouterCacheMode
+				},
+				openrouter_routing_config: {
+					mode: openRouterRoutingMode
 				}
 			};
 
@@ -4120,6 +4145,10 @@
 										bind:webSearchMaxTotalResults
 										bind:webSearchContextSize
 										bind:openRouterCacheMode
+										bind:openRouterRoutingMode
+										onOpenRouterRoutingModeChange={(mode: OpenRouterRoutingMode) => {
+											params = { ...params, openrouter_routing_mode: mode };
+										}}
 										bind:openRouterImageModel
 										reasoningLevel={params?.reasoning_level ?? null}
 										onReasoningLevelChange={(level: ReasoningLevel) => {
@@ -4250,6 +4279,10 @@
 										bind:webSearchMaxTotalResults
 										bind:webSearchContextSize
 										bind:openRouterCacheMode
+										bind:openRouterRoutingMode
+										onOpenRouterRoutingModeChange={(mode: OpenRouterRoutingMode) => {
+											params = { ...params, openrouter_routing_mode: mode };
+										}}
 										bind:openRouterImageModel
 										reasoningLevel={params?.reasoning_level ?? null}
 										onReasoningLevelChange={(level: ReasoningLevel) => {
@@ -4307,6 +4340,10 @@
 									bind:webSearchMaxTotalResults
 									bind:webSearchContextSize
 									bind:openRouterCacheMode
+									bind:openRouterRoutingMode
+									onOpenRouterRoutingModeChange={(mode: OpenRouterRoutingMode) => {
+										params = { ...params, openrouter_routing_mode: mode };
+									}}
 									bind:openRouterImageModel
 									reasoningLevel={params?.reasoning_level ?? null}
 									onReasoningLevelChange={(level: ReasoningLevel) => {

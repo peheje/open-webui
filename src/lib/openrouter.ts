@@ -16,6 +16,29 @@ export type OpenRouterSearchEngine = (typeof OPENROUTER_SEARCH_ENGINES)[number];
 export type WebSearchEngine = LocalSearchEngine | OpenRouterSearchEngine;
 export type OpenRouterCacheMode = 'smart' | 'long' | 'provider_default';
 export type OpenRouterSearchContextSize = 'low' | 'medium' | 'high';
+export type OpenRouterRoutingMode = 'official' | 'fast' | 'cheap';
+
+export const OPENROUTER_ROUTING_MODES: {
+	id: OpenRouterRoutingMode;
+	label: string;
+	description: string;
+}[] = [
+	{
+		id: 'official',
+		label: 'Official',
+		description: "Use the model maker's official endpoint without fallback."
+	},
+	{
+		id: 'fast',
+		label: 'Fast',
+		description: 'Choose the compatible provider with the highest output throughput.'
+	},
+	{
+		id: 'cheap',
+		label: 'Cheap',
+		description: 'Choose the lowest-priced compatible provider.'
+	}
+];
 
 export const OPENROUTER_IMAGE_MODELS = [
 	{
@@ -80,7 +103,31 @@ export type OpenRouterControl = {
 	official_provider: string;
 	web_search?: boolean;
 	cache_mode?: OpenRouterCacheMode;
+	default_routing_mode?: OpenRouterRoutingMode;
+	routing_modes?: OpenRouterRoutingMode[];
 };
+
+export const resolveOpenRouterRoutingMode = (
+	control: OpenRouterControl | null,
+	requestedMode: unknown
+): OpenRouterRoutingMode => {
+	const modes = control?.routing_modes ?? ['official'];
+	return typeof requestedMode === 'string' && modes.includes(requestedMode as OpenRouterRoutingMode)
+		? (requestedMode as OpenRouterRoutingMode)
+		: (control?.default_routing_mode ?? 'official');
+};
+
+export const getNextOpenRouterRoutingMode = (
+	control: OpenRouterControl,
+	currentMode: OpenRouterRoutingMode
+): OpenRouterRoutingMode => {
+	const modes = control.routing_modes ?? ['official'];
+	const index = modes.indexOf(currentMode);
+	return modes[(index + 1) % modes.length] ?? 'official';
+};
+
+export const getOpenRouterRoutingMode = (mode: OpenRouterRoutingMode) =>
+	OPENROUTER_ROUTING_MODES.find((item) => item.id === mode) ?? OPENROUTER_ROUTING_MODES[0];
 
 export const selectedModelsSupportWebSearch = (models: Model[], selectedModelIds: string[]) =>
 	selectedModelIds.length > 0 &&
@@ -107,13 +154,19 @@ export const isLocalSearchEngine = (engine: WebSearchEngine): engine is LocalSea
 
 export const OPENROUTER_SESSIONS_URL = 'https://openrouter.ai/logs?tab=sessions';
 
-export const getOpenRouterSessionId = async (chatId: string): Promise<string | null> => {
+export const getOpenRouterSessionId = async (
+	chatId: string,
+	routingMode: OpenRouterRoutingMode = 'official'
+): Promise<string | null> => {
 	if (!chatId) return null;
-	return `owui-${sha256(chatId).slice(0, 40)}`;
+	return `owui-${sha256(`${chatId}:${routingMode}`).slice(0, 40)}`;
 };
 
-export const getOpenRouterSessionUrl = async (chatId: string): Promise<string | null> => {
-	const sessionId = await getOpenRouterSessionId(chatId);
+export const getOpenRouterSessionUrl = async (
+	chatId: string,
+	routingMode: OpenRouterRoutingMode = 'official'
+): Promise<string | null> => {
+	const sessionId = await getOpenRouterSessionId(chatId, routingMode);
 	return sessionId
 		? `${OPENROUTER_SESSIONS_URL}&session_id=${encodeURIComponent(sessionId)}`
 		: null;

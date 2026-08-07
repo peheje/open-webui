@@ -94,6 +94,7 @@ def remove_open_webui_params(params: dict) -> dict:
         'stream_delta_chunk_size': int,
         'function_calling': str,
         'reasoning_level': str,
+        'openrouter_routing_mode': str,
         'reasoning_tags': list,
         'compact_token_threshold': int,
         'system': str,

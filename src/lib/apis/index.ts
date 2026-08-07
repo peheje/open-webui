@@ -1777,6 +1777,8 @@ export interface ModelMeta {
 		official_provider: string;
 		web_search?: boolean;
 		cache_mode?: 'smart' | 'long' | 'provider_default';
+		default_routing_mode?: 'official' | 'fast' | 'cheap';
+		routing_modes?: ('official' | 'fast' | 'cheap')[];
 	};
 }
 

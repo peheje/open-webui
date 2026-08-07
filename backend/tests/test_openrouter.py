@@ -5,6 +5,7 @@ from open_webui.utils import middleware as middleware_utils
 from open_webui.routers import images as image_router
 from open_webui.utils.openrouter import (
     MANAGED_SEARCH_STATE_KEY,
+    ROUTING_STATE_KEY,
     apply_openrouter_request,
     build_managed_search_fallback,
     finalize_openrouter_request,
@@ -12,6 +13,7 @@ from open_webui.utils.openrouter import (
     is_openrouter_model,
     model_supports_web_search,
     resolve_openrouter_image_parameters,
+    resolve_openrouter_routing_mode,
     resolve_openrouter_search_parameters,
     should_use_openrouter_search,
 )
@@ -28,6 +30,7 @@ OPENROUTER_MODEL = {
                 "official_provider": "xai",
                 "web_search": True,
                 "cache_mode": "smart",
+                "routing_modes": ["official", "fast", "cheap"],
             }
         }
     },
@@ -52,6 +55,64 @@ def test_only_curated_openrouter_models_activate_gateway_features():
     assert not is_openrouter_model({"id": "di.sonnet5"})
     assert should_use_openrouter_search({"web_search": True}, OPENROUTER_MODEL)
     assert not should_use_openrouter_search({"web_search": False}, OPENROUTER_MODEL)
+
+
+def test_routing_modes_are_validated_against_curated_metadata():
+    control = OPENROUTER_MODEL["info"]["meta"]["openrouter"]
+    assert resolve_openrouter_routing_mode({}, control) == "official"
+    assert resolve_openrouter_routing_mode(
+        {"openrouter_routing_config": {"mode": "fast"}},
+        control,
+    ) == "fast"
+    assert resolve_openrouter_routing_mode(
+        {"openrouter_routing_config": {"mode": "untrusted"}},
+        control,
+    ) == "official"
+
+
+def test_final_routing_maps_logical_modes_to_openrouter_provider_objects():
+    cases = {
+        "official": {
+            "only": ["xai"],
+            "allow_fallbacks": False,
+            "require_parameters": True,
+        },
+        "fast": {
+            "sort": "throughput",
+            "allow_fallbacks": True,
+            "require_parameters": True,
+        },
+        "cheap": {
+            "sort": "price",
+            "allow_fallbacks": True,
+            "require_parameters": True,
+        },
+    }
+    for mode, expected in cases.items():
+        payload = {"provider": {"only": ["stale"], "order": ["stale"]}}
+        finalize_openrouter_request(
+            payload,
+            {"mode": mode, "official_provider": "xai"},
+        )
+        assert payload["provider"] == expected
+
+
+def test_routing_mode_separates_sticky_sessions():
+    sessions = set()
+    for mode in ("official", "fast", "cheap"):
+        form_data = {}
+        apply_openrouter_request(
+            form_data,
+            {"openrouter_routing_config": {"mode": mode}},
+            OPENROUTER_MODEL,
+            "chat-123",
+        )
+        assert form_data[ROUTING_STATE_KEY] == {
+            "mode": mode,
+            "official_provider": "xai",
+        }
+        sessions.add(form_data["session_id"])
+    assert len(sessions) == 3
 
 
 def test_explicit_model_capability_disables_stale_search_requests():

@@ -86,6 +86,7 @@
 	import Cube from '../icons/Cube.svelte';
 	import Sparkles from '../icons/Sparkles.svelte';
 	import LightBulb from '../icons/LightBulb.svelte';
+	import Bolt from '../icons/Bolt.svelte';
 	import {
 		getNextReasoningLevel,
 		getReasoningControlForModels,
@@ -96,12 +97,16 @@
 	import {
 		getOpenRouterImageModel,
 		getOpenRouterControlForModels,
+		getNextOpenRouterRoutingMode,
+		getOpenRouterRoutingMode,
 		isLocalSearchEngine,
 		isOpenRouterSearchEngine,
+		resolveOpenRouterRoutingMode,
 		type OpenRouterCacheMode,
 		type OpenRouterControl,
 		type OpenRouterImageModel,
 		type OpenRouterSearchContextSize,
+		type OpenRouterRoutingMode,
 		type WebSearchEngine
 	} from '$lib/openrouter';
 
@@ -150,6 +155,7 @@
 	let reasoningControl: ReasoningControl | null = null;
 	let openRouterControl: OpenRouterControl | null = null;
 	let resolvedReasoningLevel: ReasoningLevel | null = null;
+	let resolvedOpenRouterRoutingMode: OpenRouterRoutingMode = 'official';
 	$: reasoningControl = getReasoningControlForModels($models, selectedModelIds);
 	$: openRouterControl = getOpenRouterControlForModels($models, selectedModelIds);
 	let openRouterImageAvailable = false;
@@ -161,6 +167,10 @@
 	);
 	$: directImageMode = openRouterImageAvailable && imageGenerationEnabled;
 	$: resolvedReasoningLevel = resolveReasoningLevel(reasoningControl, reasoningLevel);
+	$: resolvedOpenRouterRoutingMode = resolveOpenRouterRoutingMode(
+		openRouterControl,
+		openRouterRoutingMode
+	);
 	$: if (openRouterControl && !isOpenRouterSearchEngine(webSearchEngine)) {
 		webSearchEngine = 'auto';
 	}
@@ -202,6 +212,8 @@
 	export let webSearchMaxTotalResults = 12;
 	export let webSearchContextSize: OpenRouterSearchContextSize = 'medium';
 	export let openRouterCacheMode: OpenRouterCacheMode = 'smart';
+	export let openRouterRoutingMode: OpenRouterRoutingMode = 'official';
+	export let onOpenRouterRoutingModeChange: (mode: OpenRouterRoutingMode) => void = () => {};
 	export let openRouterImageModel: OpenRouterImageModel = 'google/gemini-3.1-flash-image';
 	export let reasoningLevel: ReasoningLevel | null = null;
 	export let onReasoningLevelChange: (level: ReasoningLevel) => void = () => {};
@@ -235,7 +247,9 @@
 	let integrationLongPressTimer: ReturnType<typeof setTimeout> | null = null;
 	let integrationLongPressTriggered = false;
 
-	const startIntegrationLongPress = (tab: 'reasoning' | 'web-search' | 'image-generation') => {
+	const startIntegrationLongPress = (
+		tab: 'reasoning' | 'routing' | 'web-search' | 'image-generation'
+	) => {
 		if (integrationLongPressTimer) window.clearTimeout(integrationLongPressTimer);
 		integrationLongPressTriggered = false;
 		integrationLongPressTimer = window.setTimeout(() => {
@@ -274,6 +288,18 @@
 		}
 
 		setReasoningLevel(getNextReasoningLevel(reasoningControl, resolvedReasoningLevel));
+	};
+
+	const setOpenRouterRoutingMode = (mode: OpenRouterRoutingMode) => {
+		openRouterRoutingMode = mode;
+		onOpenRouterRoutingModeChange(mode);
+	};
+
+	const cycleOpenRouterRoutingMode = () => {
+		if (!openRouterControl) return;
+		setOpenRouterRoutingMode(
+			getNextOpenRouterRoutingMode(openRouterControl, resolvedOpenRouterRoutingMode)
+		);
 	};
 
 	const openVoiceMode = async () => {
@@ -337,6 +363,7 @@
 		webSearchMaxTotalResults,
 		webSearchContextSize,
 		openRouterCacheMode,
+		openRouterRoutingMode: resolvedOpenRouterRoutingMode,
 		openRouterImageModel,
 		reasoningLevel: resolvedReasoningLevel,
 		codeInterpreterEnabled
@@ -2178,6 +2205,8 @@
 												bind:webSearchMaxTotalResults
 												bind:webSearchContextSize
 												bind:openRouterCacheMode
+												openRouterRoutingMode={resolvedOpenRouterRoutingMode}
+												onOpenRouterRoutingModeChange={setOpenRouterRoutingMode}
 												bind:openRouterImageModel
 												bind:imageGenerationEnabled
 												bind:codeInterpreterEnabled
@@ -2354,6 +2383,32 @@
 													>
 														<LightBulb className="size-4" strokeWidth="1.75" />
 														<span class="text-[11px] uppercase">{resolvedReasoningLevel}</span>
+													</button>
+												</Tooltip>
+											{/if}
+
+											{#if !directImageMode && openRouterControl}
+												<Tooltip
+													content={`${$i18n.t('Routing')}: ${getOpenRouterRoutingMode(resolvedOpenRouterRoutingMode).label}. ${$i18n.t('Tap to cycle')}; ${$i18n.t('hold for settings')}.`}
+													placement="top"
+												>
+													<button
+														on:pointerdown={() => startIntegrationLongPress('routing')}
+														on:pointerup={stopIntegrationLongPress}
+														on:pointercancel={stopIntegrationLongPress}
+														on:pointerleave={stopIntegrationLongPress}
+														on:contextmenu|preventDefault
+														on:click|preventDefault={() =>
+															runIntegrationTap(cycleOpenRouterRoutingMode)}
+														type="button"
+														class="group select-none touch-manipulation p-[6px] flex gap-1.5 items-center text-sm rounded-full transition-colors duration-300 focus:outline-hidden max-w-full overflow-hidden text-violet-700 dark:text-violet-200 bg-violet-50 hover:bg-violet-100 dark:bg-violet-400/10 dark:hover:bg-violet-400/20 border border-violet-200/60 dark:border-violet-400/30"
+														style="-webkit-user-select: none; -webkit-touch-callout: none;"
+														aria-label={`${$i18n.t('Routing')}: ${getOpenRouterRoutingMode(resolvedOpenRouterRoutingMode).label}`}
+													>
+														<Bolt className="size-4" strokeWidth="1.75" />
+														<span class="max-w-24 truncate text-[11px]">
+															{getOpenRouterRoutingMode(resolvedOpenRouterRoutingMode).label}
+														</span>
 													</button>
 												</Tooltip>
 											{/if}
