@@ -24,6 +24,10 @@ OPENROUTER_SEARCH_ENGINES = {
 OPENROUTER_SEARCH_CONTEXT_SIZES = {"low", "medium", "high"}
 OPENROUTER_CACHE_MODES = {"smart", "long", "provider_default"}
 OPENROUTER_ROUTING_MODES = {"official", "fast", "cheap"}
+OPENROUTER_ROUTING_SUFFIXES = {
+    "fast": ":nitro",
+    "cheap": ":floor",
+}
 OPENROUTER_IMAGE_MODELS = {
     "google/gemini-3.1-flash-lite-image",
     "google/gemini-3.1-flash-image",
@@ -216,6 +220,17 @@ def _routing_provider_config(mode: str, official_provider: Any) -> dict:
 
 def _apply_final_routing(form_data: dict, state: Any) -> None:
     state = _as_dict(state)
+    model = form_data.get("model")
+    if isinstance(model, str) and model:
+        for suffix in OPENROUTER_ROUTING_SUFFIXES.values():
+            if model.endswith(suffix):
+                model = model[: -len(suffix)]
+                break
+        form_data["model"] = model + OPENROUTER_ROUTING_SUFFIXES.get(
+            state.get("mode", "official"),
+            "",
+        )
+
     provider = _routing_provider_config(
         state.get("mode", "official"),
         state.get("official_provider"),

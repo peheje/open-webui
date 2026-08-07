@@ -46,6 +46,7 @@
 
 	let showMenu = false;
 	$: isSelected = compareEnabled ? selectedValues.includes(item.value) : value === item.value;
+	$: quantization = item.model?.info?.meta?.quantization ?? null;
 </script>
 
 <button
@@ -103,6 +104,19 @@
 			</div>
 
 			<div class="flex shrink-0 items-center gap-1.5">
+				{#if quantization?.label}
+					<Tooltip
+						content={quantization.detail ?? `Provider quantization: ${quantization.label}`}
+						className="self-end"
+					>
+						<span
+							class="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold leading-none text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+						>
+							{quantization.label}
+						</span>
+					</Tooltip>
+				{/if}
+
 				{#if item.model.owned_by === 'ollama'}
 					{#if (item.model.ollama?.details?.parameter_size ?? '') !== ''}
 						<div class="flex items-center translate-y-[0.5px]">

@@ -70,31 +70,44 @@ def test_routing_modes_are_validated_against_curated_metadata():
     ) == "official"
 
 
-def test_final_routing_maps_logical_modes_to_openrouter_provider_objects():
+def test_final_routing_maps_modes_to_model_variants_and_provider_objects():
     cases = {
-        "official": {
-            "only": ["xai"],
-            "allow_fallbacks": False,
-            "require_parameters": True,
-        },
-        "fast": {
-            "sort": "throughput",
-            "allow_fallbacks": True,
-            "require_parameters": True,
-        },
-        "cheap": {
-            "sort": "price",
-            "allow_fallbacks": True,
-            "require_parameters": True,
-        },
+        "official": (
+            "x-ai/grok-4.5",
+            {
+                "only": ["xai"],
+                "allow_fallbacks": False,
+                "require_parameters": True,
+            },
+        ),
+        "fast": (
+            "x-ai/grok-4.5:nitro",
+            {
+                "sort": "throughput",
+                "allow_fallbacks": True,
+                "require_parameters": True,
+            },
+        ),
+        "cheap": (
+            "x-ai/grok-4.5:floor",
+            {
+                "sort": "price",
+                "allow_fallbacks": True,
+                "require_parameters": True,
+            },
+        ),
     }
-    for mode, expected in cases.items():
-        payload = {"provider": {"only": ["stale"], "order": ["stale"]}}
+    for mode, (expected_model, expected_provider) in cases.items():
+        payload = {
+            "model": "x-ai/grok-4.5:floor",
+            "provider": {"only": ["stale"], "order": ["stale"]},
+        }
         finalize_openrouter_request(
             payload,
             {"mode": mode, "official_provider": "xai"},
         )
-        assert payload["provider"] == expected
+        assert payload["model"] == expected_model
+        assert payload["provider"] == expected_provider
 
 
 def test_routing_mode_separates_sticky_sessions():
