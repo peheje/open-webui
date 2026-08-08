@@ -70,6 +70,7 @@ from open_webui.retrieval.utils import (
     filter_accessible_collections,
     get_content_from_url,
     get_embedding_function,
+    is_direct_text_attachment,
     get_model_path,
     get_reranking_function,
     query_collection,
@@ -1953,8 +1954,20 @@ async def process_file(
                 db=db,
             )
             hash = calculate_sha256_string(text_content)
+            direct_text_full_context = is_direct_text_attachment(
+                filename=file.filename,
+                content_type=(file.meta or {}).get('content_type'),
+                metadata=file.meta,
+                size=(file.meta or {}).get('size') or len(text_content),
+            )
 
-            if config.BYPASS_EMBEDDING_AND_RETRIEVAL:
+            if config.BYPASS_EMBEDDING_AND_RETRIEVAL or direct_text_full_context:
+                if direct_text_full_context:
+                    log.info(
+                        'direct text attachment uses full context; skipping embeddings for %s (%d chars)',
+                        file.filename,
+                        len(text_content),
+                    )
                 await Files.update_file_data_by_id(file.id, {'status': 'completed'}, db=db)
                 await Files.update_file_hash_by_id(file.id, hash, db=db)
                 await publish_event(
