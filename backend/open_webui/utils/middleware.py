@@ -50,7 +50,7 @@ from open_webui.models.notes import Notes
 from open_webui.models.oauth_sessions import OAuthSessions
 from open_webui.models.users import UserModel, Users
 from open_webui.events import EVENTS, publish_event
-from open_webui.retrieval.utils import get_sources_from_items
+from open_webui.retrieval.utils import get_sources_from_items, is_full_context_item
 from open_webui.routers.images import (
     CreateImageForm,
     EditImageForm,
@@ -1938,7 +1938,7 @@ async def chat_completion_files_handler(
             return body, {'sources': sources}
 
         # Check if all files are in full context mode
-        all_full_context = all(item.get('context') == 'full' for item in files)
+        all_full_context = all(is_full_context_item(item) for item in files)
 
         queries = []
         if not all_full_context:

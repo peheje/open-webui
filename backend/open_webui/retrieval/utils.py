@@ -67,6 +67,108 @@ def is_youtube_url(url: str) -> bool:
     return re.match(youtube_regex, url) is not None
 
 
+DIRECT_TEXT_FULL_CONTEXT_MAX_BYTES = 1024 * 1024
+DIRECT_TEXT_EXTENSIONS = {
+    '.bash',
+    '.cfg',
+    '.conf',
+    '.css',
+    '.csv',
+    '.htm',
+    '.html',
+    '.ini',
+    '.js',
+    '.json',
+    '.jsonl',
+    '.jsx',
+    '.log',
+    '.md',
+    '.markdown',
+    '.py',
+    '.rst',
+    '.sh',
+    '.sql',
+    '.toml',
+    '.ts',
+    '.tsx',
+    '.txt',
+    '.xml',
+    '.yaml',
+    '.yml',
+}
+DIRECT_TEXT_CONTENT_TYPES = {
+    'application/javascript',
+    'application/json',
+    'application/sql',
+    'application/toml',
+    'application/xml',
+    'application/x-ndjson',
+    'application/yaml',
+}
+
+
+def is_direct_text_attachment(
+    *,
+    filename: str | None,
+    content_type: str | None,
+    metadata: dict | None,
+    size: int | None,
+) -> bool:
+    """Return whether a direct chat upload should bypass per-file RAG.
+
+    Chat attachments carry ``attachment_mode=auto`` while knowledge/library
+    ingestion does not. Small text files fit comfortably in modern model
+    context windows, so preserving their complete contents is both faster and
+    more faithful than embedding hundreds of tiny Markdown sections.
+    """
+
+    metadata = metadata if isinstance(metadata, dict) else {}
+    nested_metadata = metadata.get('data')
+    nested_metadata = nested_metadata if isinstance(nested_metadata, dict) else {}
+    attachment_mode = metadata.get('attachment_mode') or nested_metadata.get('attachment_mode')
+    if attachment_mode != 'auto':
+        return False
+
+    try:
+        normalized_size = int(size) if size is not None else None
+    except (TypeError, ValueError):
+        return False
+    if normalized_size is None or normalized_size < 0 or normalized_size > DIRECT_TEXT_FULL_CONTEXT_MAX_BYTES:
+        return False
+
+    normalized_type = (content_type or '').split(';', 1)[0].strip().lower()
+    suffix = os.path.splitext(filename or '')[1].lower()
+    return (
+        normalized_type.startswith('text/')
+        or normalized_type in DIRECT_TEXT_CONTENT_TYPES
+        or suffix in DIRECT_TEXT_EXTENSIONS
+    )
+
+
+def is_full_context_item(item: dict) -> bool:
+    if item.get('context') == 'full':
+        return True
+
+    file_data = item.get('file')
+    file_data = file_data if isinstance(file_data, dict) else {}
+    file_meta = file_data.get('meta')
+    file_meta = file_meta if isinstance(file_meta, dict) else {}
+    nested_file_meta = file_meta.get('data')
+    nested_file_meta = nested_file_meta if isinstance(nested_file_meta, dict) else {}
+    metadata = {
+        **file_meta,
+        'attachment_mode': item.get('attachment_mode')
+        or file_meta.get('attachment_mode')
+        or nested_file_meta.get('attachment_mode'),
+    }
+    return is_direct_text_attachment(
+        filename=item.get('name') or file_data.get('filename'),
+        content_type=item.get('content_type') or file_meta.get('content_type'),
+        metadata=metadata,
+        size=item.get('size') if item.get('size') is not None else file_meta.get('size'),
+    )
+
+
 LOADER_CONFIG_KEYS = {
     'youtube_language': 'rag.youtube_loader_language',
     'youtube_proxy_url': 'rag.youtube_loader_proxy_url',
@@ -1444,7 +1546,7 @@ async def get_sources_from_items(
                     'metadatas': [[{'url': item.get('url'), 'name': item.get('url')}]],
                 }
         elif item.get('type') == 'file':
-            if item.get('context') == 'full' or bypass_embedding_and_retrieval:
+            if is_full_context_item(item) or bypass_embedding_and_retrieval:
                 if item.get('file', {}).get('data', {}).get('content', ''):
                     # Manual Full Mode Toggle
                     # Used from chat file modal, we can assume that the file content will be available from item.get("file").get("data", {}).get("content")
