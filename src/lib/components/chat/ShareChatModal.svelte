@@ -39,6 +39,9 @@
 		const _chat = chat.chat;
 		console.log('share', _chat);
 
+		// LICENSE covers this Open WebUI Community wordmark.
+		// Do not alter, remove, obscure, or replace it except as LICENSE permits:
+		// https://docs.openwebui.com/license.
 		toast.success($i18n.t('Redirecting you to Open WebUI Community'));
 		const url = 'https://openwebui.com';
 		// const url = 'http://localhost:5173';
@@ -158,6 +161,7 @@
 							bind:accessGrants
 							accessRoles={['read']}
 							sharePublic={$user?.permissions?.sharing?.public_chats || $user?.role === 'admin'}
+							shareOpen={$user?.permissions?.sharing?.open_chats || $user?.role === 'admin'}
 							shareUsers={($user?.permissions?.access_grants?.allow_users ?? true) ||
 								$user?.role === 'admin'}
 							onChange={saveAccessGrants}
@@ -174,6 +178,9 @@
 								shareChat();
 							}}
 						>
+							<!-- LICENSE covers this Open WebUI Community wordmark.
+							Do not alter, remove, obscure, or replace it except as LICENSE permits:
+							https://docs.openwebui.com/license. -->
 							{$i18n.t('Share to Open WebUI Community')}
 						</button>
 					{/if}

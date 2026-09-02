@@ -72,6 +72,10 @@
 		"title": "Finnish (Suomalainen)"
 	},
 	{
+		"code": "fo-FO",
+		"title": "Faroese (Faroe Islands)"
+	},
+	{
 		"code": "fr-CA",
 		"title": "French (Canada)"
 	},
@@ -184,9 +188,9 @@
 		"title": "Slovak (Slovenčina)"
 	},
 	{
-        "code": "sl-SI",
-        "title": "Slovenian (Slovenščina)"
-    },
+		"code": "sl-SI",
+		"title": "Slovenian (Slovenščina)"
+	},
 	{
 		"code": "es-ES",
 		"title": "Spanish (Español)"

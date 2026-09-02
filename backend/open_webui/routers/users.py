@@ -36,12 +36,12 @@ from open_webui.models.access_grants import AccessGrants
 from open_webui.models.knowledge import Knowledges
 from open_webui.models.models import Models
 from open_webui.models.tools import Tools
-from open_webui.socket.main import disconnect_user_sessions
 from open_webui.utils.access_control import get_permissions, has_permission
 from open_webui.utils.auth import (
     get_admin_user,
     get_password_hash,
     get_verified_user,
+    revoke_user_tokens,
     validate_password,
 )
 from open_webui.utils.chat_variables import ChatVariablesError, normalize_user_variables, validate_user_variables
@@ -51,6 +51,38 @@ from sqlalchemy.ext.asyncio import AsyncSession
 log = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def merge_user_ui_settings(defaults: dict, settings: dict) -> dict:
+    merged = dict(defaults)
+    for key, value in settings.items():
+        if value is None:
+            continue
+
+        default_value = merged.get(key)
+        merged[key] = (
+            merge_user_ui_settings(default_value, value)
+            if isinstance(default_value, dict) and isinstance(value, dict)
+            else value
+        )
+    return merged
+
+
+def strip_default_interface_settings(defaults: dict, settings: dict) -> dict:
+    stripped = {}
+    for key, value in settings.items():
+        if value is None:
+            continue
+
+        default_value = defaults.get(key)
+        if isinstance(default_value, dict) and isinstance(value, dict):
+            nested = strip_default_interface_settings(default_value, value)
+            if nested:
+                stripped[key] = nested
+        elif value != default_value:
+            stripped[key] = value
+
+    return stripped
 
 
 ############################
@@ -80,14 +112,14 @@ async def get_users(
     filter = {}
     if query:
         filter['query'] = query
-    if order_by:
-        filter['order_by'] = order_by
-    if direction:
-        filter['direction'] = direction
 
-    filter['direction'] = direction
-
-    result = await Users.get_users(filter=filter, skip=skip, limit=limit, db=db)
+    result = await Users.get_users(
+        filter=filter,
+        sort={'order_by': order_by, 'direction': direction},
+        skip=skip,
+        limit=limit,
+        db=db,
+    )
 
     users = result['users']
     total = result['total']
@@ -135,12 +167,14 @@ async def search_users(
     filter = {}
     if query:
         filter['query'] = query
-    if order_by:
-        filter['order_by'] = order_by
-    if direction:
-        filter['direction'] = direction
 
-    return await Users.get_users(filter=filter, skip=skip, limit=limit, db=db)
+    return await Users.get_users(
+        filter=filter,
+        sort={'order_by': order_by, 'direction': direction},
+        skip=skip,
+        limit=limit,
+        db=db,
+    )
 
 
 ############################
@@ -196,13 +230,14 @@ class SharingPermissions(BaseModel):
     prompts: bool = False
     public_prompts: bool = False
     tools: bool = False
-    public_tools: bool = True
+    public_tools: bool = False
     skills: bool = False
     public_skills: bool = False
     notes: bool = False
-    public_notes: bool = True
+    public_notes: bool = False
     folders: bool = False
     public_chats: bool = False
+    open_chats: bool = False
     public_calendars: bool = False
 
 
@@ -437,10 +472,22 @@ async def get_default_user_permissions_defaults(user=Depends(get_admin_user)):
 
 @router.get('/user/settings', response_model=UserSettings | None)
 async def get_user_settings_by_session_user(
-    user=Depends(get_verified_user), db: AsyncSession = Depends(get_async_session)
+    raw: bool = False,
+    user=Depends(get_verified_user),
 ):
     # user already fetched by get_verified_user — no need to refetch
-    return user.settings
+    if raw:
+        return user.settings
+
+    default_interface_settings = await Config.get('ui.default_interface_settings')
+    if not isinstance(default_interface_settings, dict) or not default_interface_settings:
+        return user.settings
+
+    user_settings = user.settings.model_dump() if isinstance(user.settings, UserSettings) else dict(user.settings or {})
+    ui_settings = user_settings.get('ui') if isinstance(user_settings.get('ui'), dict) else {}
+    user_settings['ui'] = merge_user_ui_settings(default_interface_settings, ui_settings)
+
+    return UserSettings.model_validate(user_settings)
 
 
 ############################
@@ -463,12 +510,12 @@ async def update_user_settings_by_session_user(
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
         )
 
-    updated_user_settings = form_data.model_dump()
+    updated_user_settings = form_data.model_dump(exclude_unset=True)
     ui_settings = updated_user_settings.get('ui')
     if (
         user.role != 'admin'
         and ui_settings is not None
-        and 'toolServers' in ui_settings.keys()
+        and 'toolServers' in ui_settings
         and not await has_permission(
             user.id,
             'features.direct_tool_servers',
@@ -495,6 +542,11 @@ async def update_user_settings_by_session_user(
         if isinstance(ui_notifications, dict):
             ui_notifications.pop('webhook_url', None)
 
+    default_interface_settings = await Config.get('ui.default_interface_settings')
+    ui_settings = updated_user_settings.get('ui')
+    if isinstance(default_interface_settings, dict) and isinstance(ui_settings, dict):
+        updated_user_settings['ui'] = strip_default_interface_settings(default_interface_settings, ui_settings)
+
     user = await Users.update_user_settings_by_id(user.id, updated_user_settings, db=db)
     if user:
         await publish_event(
@@ -520,7 +572,6 @@ async def update_user_settings_by_session_user(
 async def get_user_status_by_session_user(
     request: Request,
     user=Depends(get_verified_user),
-    db: AsyncSession = Depends(get_async_session),
 ):
     if not await Config.get('users.enable_status'):
         raise HTTPException(
@@ -570,7 +621,7 @@ async def update_user_status_by_session_user(
 
 
 @router.get('/user/info', response_model=dict | None)
-async def get_user_info_by_session_user(user=Depends(get_verified_user), db: AsyncSession = Depends(get_async_session)):
+async def get_user_info_by_session_user(user=Depends(get_verified_user)):
     # user already fetched by get_verified_user — no need to refetch
     return user.info
 
@@ -665,10 +716,9 @@ async def get_user_usage_by_session_user(
     period_end = end_date or now
     if start_date is not None:
         period_start = start_date
-    elif days is not None:
-        period_start = period_end - ((days - 1) * 86400)
     else:
-        period_start = max(user.created_at or (period_end - (364 * 86400)), period_end - (729 * 86400))
+        days = days or 730
+        period_start = period_end - ((days - 1) * 86400)
 
     if period_start > period_end:
         raise HTTPException(
@@ -917,7 +967,8 @@ async def update_user_by_id(
                 raise HTTPException(400, detail=str(e))
 
             hashed = await get_password_hash(form_data.password)
-            await Auths.update_user_password_by_id(user_id, hashed, db=db)
+            if await Auths.update_user_password_by_id(user_id, hashed, db=db):
+                await revoke_user_tokens(request, user_id)
 
         # Build update dict from only the provided fields
         update_data = {}
@@ -941,10 +992,19 @@ async def update_user_by_id(
             updated_user = user
 
         if updated_user:
-            # If the role changed, disconnect all socket sessions so stale
-            # privileges cached in SESSION_POOL are invalidated.
-            if updated_user.role != user.role:
-                await disconnect_user_sessions(user_id)
+            updated_fields = [field for field in update_data.keys() if field != 'role']
+            role_changed = updated_user.role != user.role
+
+            if updated_fields:
+                await publish_event(
+                    request,
+                    EVENTS.USER_UPDATED,
+                    actor=session_user,
+                    subject_id=user_id,
+                    data={'updated_fields': updated_fields},
+                )
+
+            if role_changed:
                 await publish_event(
                     request,
                     EVENTS.USER_ROLE_UPDATED,
@@ -952,14 +1012,7 @@ async def update_user_by_id(
                     subject_id=user_id,
                     data={'role': updated_user.role},
                 )
-            else:
-                await publish_event(
-                    request,
-                    EVENTS.USER_UPDATED,
-                    actor=session_user,
-                    subject_id=user_id,
-                    data={'updated_fields': list(update_data.keys())},
-                )
+
             if form_data.password:
                 await publish_event(
                     request,
@@ -1012,7 +1065,6 @@ async def delete_user_by_id(
         result = await Auths.delete_auth_by_id(user_id, db=db)
 
         if result:
-            await disconnect_user_sessions(user_id)
             await publish_event(
                 request,
                 EVENTS.USER_DELETED,
@@ -1069,36 +1121,41 @@ async def get_user_preview(
     user_group_ids = {g.id for g in user_groups}
 
     all_models = await Models.get_all_models(db=db)
-    accessible_model_ids = await AccessGrants.get_accessible_resource_ids(
+    active_models = [m for m in all_models if m.is_active]
+    owned_model_ids = {m.id for m in active_models if m.user_id == user_id}
+    granted_model_ids = await AccessGrants.get_accessible_resource_ids(
         user_id=user_id,
         resource_type='model',
-        resource_ids=[m.id for m in all_models],
+        resource_ids=[m.id for m in active_models if m.user_id != user_id],
         permission='read',
         user_group_ids=user_group_ids,
         db=db,
     )
+    accessible_model_ids = owned_model_ids | granted_model_ids
 
     all_knowledge = await Knowledges.get_knowledge_bases(db=db)
-    accessible_knowledge_ids = await AccessGrants.get_accessible_resource_ids(
+    owned_knowledge_ids = {k.id for k in all_knowledge if k.user_id == user_id}
+    granted_knowledge_ids = await AccessGrants.get_accessible_resource_ids(
         user_id=user_id,
         resource_type='knowledge',
-        resource_ids=[k.id for k in all_knowledge],
+        resource_ids=[k.id for k in all_knowledge if k.user_id != user_id],
         permission='read',
         user_group_ids=user_group_ids,
         db=db,
     )
+    accessible_knowledge_ids = owned_knowledge_ids | granted_knowledge_ids
 
     all_tools = await Tools.get_tools(defer_content=True, db=db)
-    accessible_tool_ids = await AccessGrants.get_accessible_resource_ids(
+    owned_tool_ids = {t.id for t in all_tools if t.user_id == user_id}
+    granted_tool_ids = await AccessGrants.get_accessible_resource_ids(
         user_id=user_id,
         resource_type='tool',
-        resource_ids=[t.id for t in all_tools],
+        resource_ids=[t.id for t in all_tools if t.user_id != user_id],
         permission='read',
         user_group_ids=user_group_ids,
         db=db,
     )
-
-    active_models = [m for m in all_models if m.is_active]
+    accessible_tool_ids = owned_tool_ids | granted_tool_ids
 
     return {
         'user': {'id': target_user.id, 'name': target_user.name},

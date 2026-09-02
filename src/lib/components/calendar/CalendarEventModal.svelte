@@ -100,10 +100,10 @@
 				endTime = nsToTimeStr(endNs);
 			} else {
 				const now = new Date();
-				startDate = now.toISOString().slice(0, 10);
+				startDate = nsToDateStr(now.getTime() * NS);
 				startTime = now.toTimeString().slice(0, 5);
 				const later = new Date(now.getTime() + 60 * 60 * 1000);
-				endDate = later.toISOString().slice(0, 10);
+				endDate = nsToDateStr(later.getTime() * NS);
 				endTime = later.toTimeString().slice(0, 5);
 			}
 			allDay = false;
@@ -121,10 +121,20 @@
 			return;
 		}
 
+		if (!startDate) {
+			toast.error($i18n.t('Date is required'));
+			return;
+		}
+
 		loading = true;
 		try {
 			const startNs = dateTimeToNs(startDate, allDay ? '00:00' : startTime);
-			const endNs = endDate ? dateTimeToNs(endDate, allDay ? '23:59' : endTime) : undefined;
+			let endNs = endDate ? dateTimeToNs(endDate, allDay ? '23:59' : endTime) : undefined;
+			if (endNs !== undefined && endNs < startNs) {
+				const duration =
+					event?.end_at && event.end_at > event.start_at ? event.end_at - event.start_at : 0;
+				endNs = startNs + duration;
+			}
 
 			if (event && !event.meta?.automation_id) {
 				const result = await updateCalendarEvent(localStorage.token, event.id, {
@@ -214,11 +224,23 @@
 			<div>
 				<div class="mb-1 text-xs text-gray-500">{$i18n.t('When')}</div>
 				<div class="flex items-center gap-2 text-sm flex-wrap">
-					<input type="date" class="bg-transparent outline-hidden dark:scheme-dark" bind:value={startDate} />
+					<input
+						type="date"
+						class="bg-transparent outline-hidden dark:scheme-dark"
+						bind:value={startDate}
+					/>
 					{#if !allDay}
-						<input type="time" class="bg-transparent outline-hidden dark:scheme-dark" bind:value={startTime} />
+						<input
+							type="time"
+							class="bg-transparent outline-hidden dark:scheme-dark"
+							bind:value={startTime}
+						/>
 						<span class="text-gray-300 dark:text-gray-600">–</span>
-						<input type="time" class="bg-transparent outline-hidden dark:scheme-dark" bind:value={endTime} />
+						<input
+							type="time"
+							class="bg-transparent outline-hidden dark:scheme-dark"
+							bind:value={endTime}
+						/>
 					{/if}
 					<label class="flex items-center gap-1.5 cursor-pointer text-xs text-gray-400 ml-auto">
 						<input type="checkbox" class="accent-blue-500" bind:checked={allDay} />

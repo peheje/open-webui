@@ -53,8 +53,9 @@
 				<AdminSettingRow
 					label={$i18n.t('Enable Code Execution')}
 					description={$i18n.t('Allow models to run generated code and return execution results.')}
+					let:labelId
 				>
-					<Switch bind:state={config.ENABLE_CODE_EXECUTION} />
+					<Switch bind:state={config.ENABLE_CODE_EXECUTION} ariaLabelledbyId={labelId} />
 				</AdminSettingRow>
 
 				{#if config.ENABLE_CODE_EXECUTION}
@@ -92,6 +93,9 @@
 							/>
 						</AdminSettingField>
 
+						<!-- LICENSE covers this Open WebUI wordmark.
+							Do not alter, remove, obscure, or replace it except as LICENSE permits:
+							https://docs.openwebui.com/license. -->
 						<AdminSettingRow
 							label={$i18n.t('Jupyter Auth')}
 							description={$i18n.t('Select how Open WebUI authenticates with the Jupyter server.')}
@@ -153,8 +157,9 @@
 				<AdminSettingRow
 					label={$i18n.t('Enable Code Interpreter')}
 					description={$i18n.t('Allow models to use the code interpreter tool during chats.')}
+					let:labelId
 				>
-					<Switch bind:state={config.ENABLE_CODE_INTERPRETER} />
+					<Switch bind:state={config.ENABLE_CODE_INTERPRETER} ariaLabelledbyId={labelId} />
 				</AdminSettingRow>
 
 				{#if config.ENABLE_CODE_INTERPRETER}
@@ -192,6 +197,9 @@
 							/>
 						</AdminSettingField>
 
+						<!-- LICENSE covers this Open WebUI wordmark.
+							Do not alter, remove, obscure, or replace it except as LICENSE permits:
+							https://docs.openwebui.com/license. -->
 						<AdminSettingRow
 							label={$i18n.t('Jupyter Auth')}
 							description={$i18n.t('Select how Open WebUI authenticates with the Jupyter server.')}

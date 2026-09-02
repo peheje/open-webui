@@ -168,10 +168,13 @@
 					<!-- {$i18n.t('Delete Chat')} -->
 					<!-- {$i18n.t('Open Model Selector')} -->
 					<!-- {$i18n.t('Toggle Dictation')} -->
+					<!-- {$i18n.t('Navigate to Previous Chat')} -->
+					<!-- {$i18n.t('Navigate to Next Chat')} -->
 					<!-- {$i18n.t('Search')} -->
 					<!-- {$i18n.t('Open Settings')} -->
 					<!-- {$i18n.t('Show Shortcuts')} -->
 					<!-- {$i18n.t('Toggle Sidebar')} -->
+					<!-- {$i18n.t('Toggle Controls')} -->
 					<!-- {$i18n.t('Close Modal')} -->
 					<!-- {$i18n.t('Focus Chat Input')} -->
 					<!-- {$i18n.t('Accept Autocomplete Generation\nJump to Prompt Variable')} -->
@@ -181,6 +184,8 @@
 					<!-- {$i18n.t('Talk to Model')} -->
 					<!-- {$i18n.t('Generate Message Pair')} -->
 					<!-- {$i18n.t('Regenerate Response')} -->
+					<!-- {$i18n.t('Allow Tool Call')} -->
+					<!-- {$i18n.t('Deny Tool Call')} -->
 					<!-- {$i18n.t('Stop Generating')} -->
 					<!-- {$i18n.t('Edit Last Message')} -->
 					<!-- {$i18n.t('Copy Last Response')} -->
@@ -188,6 +193,7 @@
 
 					<!-- {$i18n.t('Only active when "Paste Large Text as File" setting is toggled on.')} -->
 					<!-- {$i18n.t('Only active when the chat input is in focus.')} -->
+					<!-- {$i18n.t('Only active when a tool call is waiting for approval.')} -->
 					<!-- {$i18n.t('Only active when the chat input is in focus and an LLM is generating a response.')} -->
 					<!-- {$i18n.t('Only can be triggered when the chat input is in focus.')} -->
 
