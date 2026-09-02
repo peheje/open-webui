@@ -844,6 +844,7 @@
 	let showSkills = false;
 
 	let loaded = false;
+	let recording = false;
 	let isComposing = false;
 	// Safari has a bug where compositionend is not triggered correctly #16615
 	// when using the virtual keyboard on iOS.
