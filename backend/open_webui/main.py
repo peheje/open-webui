@@ -1118,8 +1118,20 @@ async def chat_completion(
 
             model = request.app.state.MODELS[model_id]
             model_info = await Models.get_model_by_id(model_id)
+            # A manually configured provider model may be intentionally hidden
+            # from the effective UI model map (for example, the upstream
+            # OpenRouter base row behind a named preset) while still being
+            # available in BASE_MODELS/OPENAI_MODELS for routing.  Treat that
+            # retained base as available; otherwise valid presets fail with
+            # "Model not found" before the provider dispatcher can resolve it.
             missing_base_model = bool(
-                model_info and model_info.base_model_id and model_info.base_model_id not in request.app.state.MODELS
+                model_info
+                and model_info.base_model_id
+                and model_info.base_model_id not in request.app.state.MODELS
+                and not any(
+                    base_model.get('id') == model_info.base_model_id
+                    for base_model in request.app.state.BASE_MODELS
+                )
             )
 
             if missing_base_model and ENABLE_CUSTOM_MODEL_FALLBACK:
