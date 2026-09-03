@@ -397,6 +397,11 @@ async def lifespan(app: FastAPI):
     base_models_cache_enabled = await Config.get('models.base_models_cache')
     tool_server_connections = await Config.get('tool_server.connections', []) or []
 
+    # Keep this import before the first reference.  A second, late import below
+    # would make the name local to this lifespan function and raise
+    # UnboundLocalError during startup on Python 3.11.
+    from open_webui.utils.automations import scheduler_worker_loop
+
     app.state.scheduler_worker_loop = asyncio.create_task(scheduler_worker_loop(app))
 
     if base_models_cache_enabled:
@@ -453,10 +458,6 @@ async def lifespan(app: FastAPI):
             log.info('Initialized %s terminal server(s)', len(app.state.TERMINAL_SERVERS))
         except Exception as e:
             log.warning(f'Failed to initialize terminal servers at startup: {e}')
-
-    from open_webui.utils.automations import scheduler_worker_loop
-
-    asyncio.create_task(scheduler_worker_loop(app))
 
     # Mark application as ready to accept traffic from a startup perspective.
     if license_task:
