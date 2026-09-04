@@ -92,6 +92,8 @@
 	import Wrench from '../icons/Wrench.svelte';
 	import Cube from '../icons/Cube.svelte';
 	import Sparkles from '../icons/Sparkles.svelte';
+	import Mic from '../icons/Mic.svelte';
+	import Voice from '../icons/Voice.svelte';
 	import LightBulb from '../icons/LightBulb.svelte';
 	import Bolt from '../icons/Bolt.svelte';
 	import {
@@ -1551,6 +1553,21 @@
 			shiftKey = true;
 		}
 
+		if (
+			$settings?.keyboardShortcuts !== false &&
+			matchKeybinding(e) === Shortcut.TOGGLE_DICTATION
+		) {
+			e.preventDefault();
+			if (recording) {
+				// Confirm and stop recording
+				document.getElementById('confirm-recording-button')?.click();
+			} else {
+				// Start recording (same logic as voice-input-button click)
+				document.getElementById('voice-input-button')?.click();
+			}
+			return;
+		}
+
 		if (e.key === 'Escape') {
 			console.log('Escape');
 			dragged = false;
@@ -1949,7 +1966,7 @@
 						/>
 					</div>
 					<form
-						class="w-full flex flex-col gap-1.5"
+						class="w-full flex flex-col gap-1.5 {recording ? 'hidden' : ''}"
 						on:submit|preventDefault={() => {
 							dispatch('submit', prompt);
 						}}
