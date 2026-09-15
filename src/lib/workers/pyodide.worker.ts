@@ -120,8 +120,28 @@ function fsUploadFiles(files: { name: string; data: ArrayBuffer }[], dir = '/mnt
 	}
 }
 
-function fsList(path: string) {
-	const entries: { name: string; type: 'file' | 'directory'; size: number }[] = [];
+type FsEntry = { name: string; type: 'file' | 'directory'; size: number; mtime: number };
+type ImageOutput = { name: string; mimeType: string; data: ArrayBuffer };
+
+const IMAGE_MIME_TYPES: Record<string, string> = {
+	'.png': 'image/png',
+	'.jpg': 'image/jpeg',
+	'.jpeg': 'image/jpeg',
+	'.gif': 'image/gif',
+	'.webp': 'image/webp',
+	'.avif': 'image/avif',
+	'.bmp': 'image/bmp',
+	'.tif': 'image/tiff',
+	'.tiff': 'image/tiff'
+};
+
+function imageMimeType(name: string): string | null {
+	const extension = name.slice(name.lastIndexOf('.')).toLowerCase();
+	return IMAGE_MIME_TYPES[extension] ?? null;
+}
+
+function fsList(path: string): FsEntry[] {
+	const entries: FsEntry[] = [];
 	try {
 		const items = self.pyodide.FS.readdir(path).filter((n: string) => n !== '.' && n !== '..');
 		for (const name of items) {
@@ -131,7 +151,8 @@ function fsList(path: string) {
 				entries.push({
 					name,
 					type: isDir ? 'directory' : 'file',
-					size: isDir ? 0 : stat.size
+					size: isDir ? 0 : stat.size,
+					mtime: isDir ? 0 : Number((stat as any).mtimeMs ?? (stat as any).mtime ?? 0)
 				});
 			} catch {
 				// skip inaccessible entries
@@ -145,7 +166,31 @@ function fsList(path: string) {
 
 function fsRead(path: string): ArrayBuffer {
 	const data: Uint8Array = (self.pyodide.FS as any).readFile(path) as Uint8Array;
-	return data.buffer as ArrayBuffer;
+	return data.slice().buffer as ArrayBuffer;
+}
+
+function snapshotImageFiles(path = '/mnt/uploads') {
+	return new Map(
+		fsList(path)
+			.filter((entry) => entry.type === 'file' && imageMimeType(entry.name))
+			.map((entry) => [entry.name, `${entry.size}:${entry.mtime}`])
+	);
+}
+
+function collectImageOutputs(before: Map<string, string>, path = '/mnt/uploads'): ImageOutput[] {
+	const outputs: ImageOutput[] = [];
+	for (const entry of fsList(path)) {
+		const mimeType = imageMimeType(entry.name);
+		const signature = `${entry.size}:${entry.mtime}`;
+		if (entry.type !== 'file' || !mimeType || before.get(entry.name) === signature) continue;
+
+		try {
+			outputs.push({ name: entry.name, mimeType, data: fsRead(`${path}/${entry.name}`) });
+		} catch (error) {
+			console.warn(`Unable to read generated image ${entry.name}:`, error);
+		}
+	}
+	return outputs;
 }
 
 function fsDelete(path: string) {
@@ -188,14 +233,15 @@ async function executeCode(
 		fsUploadFiles(files);
 		persistFS();
 	}
+	const beforeImages = snapshotImageFiles();
 
 	try {
 		// check if matplotlib is imported in the code
 		if (code.includes('matplotlib')) {
-			// Override plt.show() to return base64 image
-			await self.pyodide.runPythonAsync(`import base64
-import os
-from io import BytesIO
+			// Override plt.show() to write a file. The browser uploads the bytes over
+			// HTTP after execution, so a large base64 string never crosses Socket.IO.
+			await self.pyodide.runPythonAsync(`import os
+import uuid
 
 # before importing matplotlib
 # to avoid the wasm backend (which needs js.document', not available in worker)
@@ -207,14 +253,10 @@ _old_show = matplotlib.pyplot.show
 assert _old_show, "matplotlib.pyplot.show"
 
 def show(*, block=None):
-	buf = BytesIO()
-	matplotlib.pyplot.savefig(buf, format="png")
-	buf.seek(0)
-	# encode to a base64 str
-	img_str = base64.b64encode(buf.read()).decode('utf-8')
+	output_path = f"/mnt/uploads/pyodide-matplotlib-{uuid.uuid4().hex}.png"
+	matplotlib.pyplot.savefig(output_path, format="png")
 	matplotlib.pyplot.clf()
-	buf.close()
-	print(f"data:image/png;base64,{img_str}")
+	print("[Open WebUI image generated]")
 
 matplotlib.pyplot.show = show`);
 		}
@@ -232,7 +274,10 @@ matplotlib.pyplot.show = show`);
 		self.stderr = error instanceof Error ? error.message : String(error);
 	}
 
-	self.postMessage({ id, result: self.result, stdout: self.stdout, stderr: self.stderr });
+	const images = collectImageOutputs(beforeImages);
+	persistFS();
+	const transfer = images.map((image) => image.data);
+	self.postMessage({ id, result: self.result, stdout: self.stdout, stderr: self.stderr, images }, { transfer });
 }
 
 // ---------------------------------------------------------------------------

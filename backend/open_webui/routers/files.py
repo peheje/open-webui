@@ -52,6 +52,20 @@ log = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Generated code-sandbox images are raster files. Keep SVG and other active or
+# browser-interpreted formats as downloads even when their metadata is image/*.
+INLINE_IMAGE_CONTENT_TYPES = frozenset(
+    {
+        'image/png',
+        'image/jpeg',
+        'image/gif',
+        'image/webp',
+        'image/avif',
+        'image/bmp',
+        'image/tiff',
+    }
+)
+
 
 from open_webui.utils.access_control.files import has_access_to_file
 from open_webui.utils.json_codec import JSONCodec
@@ -818,7 +832,7 @@ async def get_file_content_by_id(
                     if content_type == 'application/pdf' or filename.lower().endswith('.pdf'):
                         headers['Content-Disposition'] = f"inline; filename*=UTF-8''{encoded_filename}"
                         content_type = 'application/pdf'
-                    elif content_type != 'text/plain':
+                    elif content_type not in INLINE_IMAGE_CONTENT_TYPES and content_type != 'text/plain':
                         headers['Content-Disposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
                 return FileResponse(file_path, headers=headers, media_type=content_type)

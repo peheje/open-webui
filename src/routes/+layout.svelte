@@ -38,7 +38,7 @@
 		desktopEvent
 	} from '$lib/stores';
 	import { refreshChatList } from '$lib/stores/chatList';
-	import { getFileContentById } from '$lib/apis/files';
+	import { getFileContentById, uploadFile } from '$lib/apis/files';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { beforeNavigate } from '$app/navigation';
@@ -291,6 +291,138 @@
 		return worker;
 	};
 
+	const PYODIDE_IMAGE_MIME_TYPES = new Set([
+		'image/png',
+		'image/jpeg',
+		'image/gif',
+		'image/webp',
+		'image/avif',
+		'image/bmp',
+		'image/tiff'
+	]);
+	const DATA_IMAGE_URI_PATTERN =
+		/data:(image\/(?:png|jpeg|gif|webp|avif|bmp|tiff));base64,([A-Za-z0-9+/]*={0,2})/gi;
+	const MAX_PYODIDE_IMAGE_BYTES = 25 * 1024 * 1024;
+
+	/** @param {string} encoded */
+	const dataUriToArrayBuffer = (encoded) => {
+		const binary = atob(encoded);
+		const bytes = new Uint8Array(binary.length);
+		for (let index = 0; index < binary.length; index++) {
+			bytes[index] = binary.charCodeAt(index);
+		}
+		return bytes.buffer;
+	};
+
+	/** @param {any} value @param {any[]} images */
+	const materializeDataUriImages = (value, images) => {
+		if (typeof value === 'string') {
+			/** @type {string[]} */
+			const parts = [];
+			let lastIndex = 0;
+			DATA_IMAGE_URI_PATTERN.lastIndex = 0;
+			/** @type {RegExpExecArray | null} */
+			let match;
+			while ((match = DATA_IMAGE_URI_PATTERN.exec(value)) !== null) {
+				const [uri, contentType, encoded] = match;
+				parts.push(value.slice(lastIndex, match.index));
+				lastIndex = match.index + uri.length;
+
+				if (Math.floor((encoded.length * 3) / 4) > MAX_PYODIDE_IMAGE_BYTES) {
+					parts.push('[Open WebUI image omitted: output is too large]');
+					continue;
+				}
+
+				try {
+					const extension = contentType.toLowerCase() === 'image/jpeg' ? 'jpg' : contentType.split('/')[1];
+					images.push({
+						name: `pyodide-output-${Date.now()}-${images.length}.${extension}`,
+						mimeType: contentType,
+						data: dataUriToArrayBuffer(encoded)
+					});
+					parts.push('[Open WebUI image generated]');
+				} catch (error) {
+					console.warn('Unable to decode a Pyodide image data URI:', error);
+					parts.push(uri);
+				}
+			}
+			parts.push(value.slice(lastIndex));
+			return parts.length > 1 ? parts.join('') : value;
+		}
+
+		if (Array.isArray(value)) {
+			return value.map((item) => materializeDataUriImages(item, images));
+		}
+
+		if (value && typeof value === 'object') {
+			return Object.fromEntries(
+				Object.entries(value).map(([key, item]) => [key, materializeDataUriImages(item, images)])
+			);
+		}
+
+		return value;
+	};
+
+	/** @param {any[]} images */
+	const uploadPyodideImages = async (images) => {
+		const uploaded = [];
+		const errors = [];
+		const token = localStorage.token;
+
+		if (!token && images.length > 0) {
+			return { uploaded, errors: ['Cannot upload a generated image without an authenticated session.'] };
+		}
+
+		for (const image of images) {
+			const contentType = String(image?.mimeType || image?.content_type || '').toLowerCase();
+			if (!PYODIDE_IMAGE_MIME_TYPES.has(contentType) || !image?.data) {
+				errors.push(`Skipped unsupported Pyodide image output: ${image?.name || 'unknown file'}`);
+				continue;
+			}
+
+			try {
+				const file = new File([image.data], image.name || 'pyodide-output.png', { type: contentType });
+				const fileItem = await uploadFile(
+					token,
+					file,
+					{ code_interpreter_output: true },
+					false,
+					false
+				);
+				if (!fileItem?.id) throw new Error('The file API returned no file ID.');
+
+				uploaded.push({
+					type: 'image',
+					id: fileItem.id,
+					url: `${WEBUI_API_BASE_URL}/files/${encodeURIComponent(fileItem.id)}/content`,
+					name: fileItem.meta?.name || fileItem.filename || file.name,
+					content_type: contentType,
+					size: file.size
+				});
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				console.error('Failed to upload Pyodide image:', error);
+				errors.push(`Failed to upload generated image: ${message}`);
+			}
+		}
+
+		return { uploaded, errors };
+	};
+
+	/** @param {any} cb @param {any} output */
+	const sendResult = (cb, output) => {
+		if (!cb) return;
+		cb(
+			JSON.parse(
+				JSON.stringify(
+					output,
+					(_key, value) => (typeof value === 'bigint' ? value.toString() : value)
+				)
+			)
+		);
+	};
+
+	/** @param {any} id @param {any} code @param {any} cb @param {any[]} files */
 	const executePythonAsWorker = async (id, code, cb, files = []) => {
 		let result = null;
 		let stdout = null;
@@ -353,24 +485,13 @@
 				pyodideWorker.set(null);
 
 				if (cb) {
-					cb(
-						JSON.parse(
-							JSON.stringify(
-								{
-									stdout: stdout,
-									stderr: stderr,
-									result: result
-								},
-								(_key, value) => (typeof value === 'bigint' ? value.toString() : value)
-							)
-						)
-					);
+					sendResult(cb, { stdout, stderr, result, images: [] });
 				}
 			}
 		}, 60000);
 
 		// Use addEventListener so multiple concurrent executions don't clobber each other
-		const onMessage = (event) => {
+		const onMessage = async (event) => {
 			const { id: eventId, ...data } = event.data;
 			// Only handle responses for this execution ID
 			if (eventId !== id) return;
@@ -382,26 +503,29 @@
 			worker.removeEventListener('message', onMessage);
 			worker.removeEventListener('error', onError);
 
-			data['stdout'] && (stdout = data['stdout']);
-			data['stderr'] && (stderr = data['stderr']);
-			data['result'] && (result = data['result']);
+			try {
+				const dataUriImages = [];
+				const normalizedStdout = materializeDataUriImages(data.stdout, dataUriImages);
+				const normalizedResult = materializeDataUriImages(data.result, dataUriImages);
+				const imageUpload = await uploadPyodideImages([
+					...(Array.isArray(data.images) ? data.images : []),
+					...dataUriImages
+				]);
 
-			if (cb) {
-				cb(
-					JSON.parse(
-						JSON.stringify(
-							{
-								stdout: stdout,
-								stderr: stderr,
-								result: result
-							},
-							(_key, value) => (typeof value === 'bigint' ? value.toString() : value)
-						)
-					)
-				);
+				stdout = normalizedStdout;
+				stderr = data.stderr ?? null;
+				result = normalizedResult;
+				if (imageUpload.errors.length > 0) {
+					stderr = [stderr, ...imageUpload.errors].filter(Boolean).join('\n');
+				}
+
+				executing = false;
+				sendResult(cb, { stdout, stderr, result, images: imageUpload.uploaded });
+			} catch (error) {
+				executing = false;
+				stderr = [stderr, error instanceof Error ? error.message : String(error)].filter(Boolean).join('\n');
+				sendResult(cb, { stdout, stderr, result, images: [] });
 			}
-
-			executing = false;
 		};
 
 		const onError = (event) => {
@@ -410,20 +534,7 @@
 			worker.removeEventListener('message', onMessage);
 			worker.removeEventListener('error', onError);
 
-			if (cb) {
-				cb(
-					JSON.parse(
-						JSON.stringify(
-							{
-								stdout: stdout,
-								stderr: stderr,
-								result: result
-							},
-							(_key, value) => (typeof value === 'bigint' ? value.toString() : value)
-						)
-					)
-				);
-			}
+			sendResult(cb, { stdout, stderr, result, images: [] });
 			executing = false;
 		};
 

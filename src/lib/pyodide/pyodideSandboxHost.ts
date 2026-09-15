@@ -64,11 +64,61 @@ const sandboxScript = String.raw`
 				try {
 					const stat = pyodide.FS.stat(path + '/' + name);
 					const isDir = pyodide.FS.isDir(stat.mode);
-					entries.push({ name: name, type: isDir ? 'directory' : 'file', size: isDir ? 0 : stat.size });
+					entries.push({
+						name: name,
+						type: isDir ? 'directory' : 'file',
+						size: isDir ? 0 : stat.size,
+						mtime: isDir ? 0 : Number(stat.mtimeMs || stat.mtime || 0)
+					});
 				} catch {}
 			}
 		} catch {}
 		return entries;
+	}
+
+	const imageMimeTypes = {
+		'.png': 'image/png',
+		'.jpg': 'image/jpeg',
+		'.jpeg': 'image/jpeg',
+		'.gif': 'image/gif',
+		'.webp': 'image/webp',
+		'.avif': 'image/avif',
+		'.bmp': 'image/bmp',
+		'.tif': 'image/tiff',
+		'.tiff': 'image/tiff'
+	};
+
+	function imageMimeType(name) {
+		const dot = name.lastIndexOf('.');
+		return imageMimeTypes[dot >= 0 ? name.slice(dot).toLowerCase() : ''] || null;
+	}
+
+	function snapshotImageFiles(path) {
+		const snapshot = new Map();
+		for (const entry of list(path || '/mnt/uploads')) {
+			if (entry.type === 'file' && imageMimeType(entry.name)) {
+				snapshot.set(entry.name, entry.size + ':' + entry.mtime);
+			}
+		}
+		return snapshot;
+	}
+
+	function collectImageOutputs(before, path) {
+		const outputs = [];
+		path = path || '/mnt/uploads';
+		for (const entry of list(path)) {
+			const mimeType = imageMimeType(entry.name);
+			const signature = entry.size + ':' + entry.mtime;
+			if (entry.type !== 'file' || !mimeType || before.get(entry.name) === signature) continue;
+
+			try {
+				const bytes = pyodide.FS.readFile(path + '/' + entry.name).slice();
+				outputs.push({ name: entry.name, mimeType: mimeType, data: bytes.buffer });
+			} catch (error) {
+				console.warn('Unable to read generated image ' + entry.name + ':', error);
+			}
+		}
+		return outputs;
 	}
 
 	function remove(path) {
@@ -108,22 +158,18 @@ const sandboxScript = String.raw`
 
 	async function patchMatplotlib() {
 		await pyodide.runPythonAsync([
-			'import base64',
 			'import os',
-			'from io import BytesIO',
+			'import uuid',
 			'os.environ["MPLBACKEND"] = "AGG"',
 			'import matplotlib.pyplot',
 			'_old_show = matplotlib.pyplot.show',
 			'assert _old_show, "matplotlib.pyplot.show"',
 			'def show(*, block=None):',
 			// String.raw keeps \t as-is; the sandbox's JS parser turns it into a real tab
-			'\tbuf = BytesIO()',
-			'\tmatplotlib.pyplot.savefig(buf, format="png")',
-			'\tbuf.seek(0)',
-			'\timg_str = base64.b64encode(buf.read()).decode("utf-8")',
+			'\toutput_path = f"/mnt/uploads/pyodide-matplotlib-{uuid.uuid4().hex}.png"',
+			'\tmatplotlib.pyplot.savefig(output_path, format="png")',
 			'\tmatplotlib.pyplot.clf()',
-			'\tbuf.close()',
-			'\tprint(f"data:image/png;base64,{img_str}")',
+			'\tprint("[Open WebUI image generated]")',
 			'matplotlib.pyplot.show = show'
 		].join('\n'));
 	}
@@ -133,13 +179,16 @@ const sandboxScript = String.raw`
 		stderr = null;
 		let result = null;
 		if (files && files.length > 0) upload(files);
+		const beforeImages = snapshotImageFiles('/mnt/uploads');
 		try {
 			if (code.includes('matplotlib')) await patchMatplotlib();
 			result = clean(await pyodide.runPythonAsync(code));
 		} catch (error) {
 			stderr = error && error.message ? error.message : String(error);
 		}
-		post({ id: id, result: result, stdout: stdout, stderr: stderr });
+		const images = collectImageOutputs(beforeImages, '/mnt/uploads');
+		const transfer = images.map(function (image) { return image.data; });
+		post({ id: id, result: result, stdout: stdout, stderr: stderr, images: images }, transfer);
 	}
 
 	window.addEventListener('message', async function (event) {
@@ -163,7 +212,7 @@ const sandboxScript = String.raw`
 					break;
 				case 'fs:read':
 					try {
-						const buffer = pyodide.FS.readFile(data.path).buffer;
+						const buffer = pyodide.FS.readFile(data.path).slice().buffer;
 						post({ id: id, type: data.type, data: buffer }, [buffer]);
 					} catch (error) {
 						post({ id: id, type: data.type, error: error && error.message ? error.message : String(error) });

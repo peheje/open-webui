@@ -11,7 +11,7 @@ const PLACEHOLDER_IMAGE = '/favicon.png';
  *
  * Allowed patterns:
  *   - Relative paths (starting with '/')
- *   - data:image/* URIs
+ *   - base64 data URIs for a small raster-image allowlist
  *   - Same-origin URLs (starting with WEBUI_BASE_URL)
  *   - Gravatar URLs (https://www.gravatar.com/avatar/)
  *   - External HTTP(S) URLs when allowExternal is true
@@ -24,12 +24,18 @@ export function safeImageUrl(url: string, allowExternal = false): string {
 		return `${WEBUI_BASE_URL}${PLACEHOLDER_IMAGE}`;
 	}
 
+	// Markdown image tokens are rendered as <img> components rather than through
+	// DOMPurify. Keep data URIs useful for raster images without allowing HTML,
+	// SVG, or other active content to enter an image source.
+	const safeRasterDataUri =
+		/^data:image\/(?:png|jpeg|gif|webp|avif|bmp|tiff);base64,[A-Za-z0-9+/]*={0,2}$/i;
+
 	if (
 		(WEBUI_BASE_URL && url.startsWith(WEBUI_BASE_URL)) ||
 		url.startsWith('https://www.gravatar.com/avatar/') ||
 		(allowExternal && /^https?:\/\//i.test(url)) ||
-		url.startsWith('data:') ||
-		url.startsWith('/')
+		safeRasterDataUri.test(url) ||
+		(url.startsWith('/') && !url.startsWith('//'))
 	) {
 		return url;
 	}

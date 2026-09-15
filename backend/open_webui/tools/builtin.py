@@ -708,7 +708,7 @@ async def execute_code(
                 }
             )
 
-            # Parse the output - pyodide returns dict with stdout, stderr, result
+            # Parse the output - pyodide returns small text plus browser-uploaded image descriptors.
             if isinstance(output, dict):
                 # Handle error responses from event_caller (e.g. session disconnected, timeout)
                 if output.get('error') and not output.get('stdout') and not output.get('result'):
@@ -744,6 +744,8 @@ async def execute_code(
         else:
             return JSONCodec.dumps({'error': f'Unknown code interpreter engine: {engine}'})
 
+        image_files = []
+
         # Handle image outputs (base64 encoded) - replace with uploaded URLs
         # Get actual user object for image upload (upload_image requires user.id attribute)
         if __user__ and __user__.get('id'):
@@ -751,6 +753,50 @@ async def execute_code(
             from open_webui.utils.files import get_image_url_from_base64
 
             user = await Users.get_user_by_id(__user__['id'])
+
+            # Pyodide runs in the browser. Its generated files are uploaded by the
+            # browser before this callback reaches the server. Only accept image
+            # files owned by this user, and rebuild the URL from the server-side
+            # file record instead of trusting a client-provided URL.
+            client_images = output.get('images', []) if engine == 'pyodide' and isinstance(output, dict) else []
+            allowed_image_types = {
+                'image/png',
+                'image/jpeg',
+                'image/gif',
+                'image/webp',
+                'image/avif',
+                'image/bmp',
+                'image/tiff',
+            }
+            if user and isinstance(client_images, list):
+                from open_webui.models.files import Files
+
+                for image in client_images:
+                    if not isinstance(image, dict):
+                        continue
+                    file_id = image.get('id')
+                    if not isinstance(file_id, str) or not file_id:
+                        continue
+
+                    file = await Files.get_file_by_id(file_id)
+                    if not file or file.user_id != user.id:
+                        continue
+
+                    meta = file.meta if isinstance(file.meta, dict) else {}
+                    content_type = str(meta.get('content_type') or '').lower()
+                    if content_type not in allowed_image_types:
+                        continue
+
+                    image_files.append(
+                        {
+                            'type': 'image',
+                            'id': file.id,
+                            'url': str(__request__.app.url_path_for('get_file_content_by_id', id=file.id)),
+                            'name': meta.get('name') or file.filename,
+                            'content_type': content_type,
+                            'size': meta.get('size'),
+                        }
+                    )
 
             # Extract and upload images from stdout
             if stdout and isinstance(stdout, str):
@@ -782,11 +828,32 @@ async def execute_code(
                             result_lines[idx] = f'![Output Image]({image_url})'
                 result = '\n'.join(result_lines)
 
+            if image_files:
+                # Keep a compact Markdown representation in the tool result for
+                # the model, while the event below renders the files immediately
+                # in the current assistant message.
+                image_markdown = '\n'.join(
+                    f"![Output Image]({image['url']})" for image in image_files
+                )
+                stdout = f'{stdout.rstrip()}\n{image_markdown}'.lstrip() if stdout else image_markdown
+
+                if __event_emitter__:
+                    # The generic `files` event is both rendered by Chat.svelte
+                    # and persisted by the standard event emitter.
+                    await __event_emitter__({'type': 'files', 'data': {'files': image_files}})
+                elif is_saved_chat_id(__chat_id__) and __message_id__:
+                    await Chats.add_message_files_by_id_and_message_id(
+                        __chat_id__,
+                        __message_id__,
+                        image_files,
+                    )
+
         response = {
             'status': 'success',
             'stdout': stdout,
             'stderr': stderr,
             'result': result,
+            'images': image_files,
         }
 
         return JSONCodec.dumps(response, ensure_ascii=False)
