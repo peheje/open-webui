@@ -1,0 +1,2728 @@
+{
+  "config": {
+    "auth.api_key.allowed_endpoints": "",
+    "auth.api_key.endpoint_restrictions": false,
+    "auth.enable_api_keys": false,
+    "auth.jwt_expiry": "4w",
+    "automations.enable": true,
+    "automations.max_count": "",
+    "automations.min_interval": "",
+    "calendar.enable": true,
+    "channels.enable": false,
+    "channels.model_response_mode": "thread",
+    "chat.context_compaction.enable": true,
+    "chat.context_compaction.model": "",
+    "chat.context_compaction.retention_percentage": 40,
+    "chat.context_compaction.token_cap": 600000,
+    "chat.context_compaction.token_threshold": 80000,
+    "chat.tool_permissions.enable": false,
+    "code_execution.enable": true,
+    "code_execution.engine": "pyodide",
+    "code_interpreter.enable": true,
+    "code_interpreter.engine": "pyodide",
+    "direct.enable": false,
+    "evaluation.arena.enable": false,
+    "evaluation.arena.models": [],
+    "file.image_compression_height": null,
+    "file.image_compression_width": null,
+    "folders.enable": true,
+    "folders.max_file_count": "",
+    "image_generation.enable": false,
+    "image_generation.engine": "openai",
+    "image_generation.model": "",
+    "image_generation.prompt.enable": true,
+    "image_generation.size": "512x512",
+    "image_generation.steps": 50,
+    "images.edit.enable": false,
+    "images.edit.engine": "openai",
+    "images.edit.model": "",
+    "images.edit.size": "",
+    "memories.background_review.enable": false,
+    "memories.context_char_limit": 2000,
+    "memories.enable": true,
+    "memories.review_interval_turns": 10,
+    "memories.system_context.enable": true,
+    "memories.user_char_limit": 2000,
+    "models.base_models_cache": false,
+    "models.default_metadata": {
+      "builtinTools": {
+        "code_interpreter": true,
+        "web_search": true
+      },
+      "capabilities": {
+        "code_interpreter": true,
+        "web_search": true
+      },
+      "defaultFeatureIds": [
+        "web_search",
+        "code_interpreter"
+      ]
+    },
+    "models.default_params": {
+      "function_calling": "native"
+    },
+    "notes.enable": true,
+    "subagents.background_enabled": false,
+    "subagents.enable": false,
+    "subagents.max_async": 20,
+    "subagents.max_concurrent": 20,
+    "subagents.max_iterations": 30,
+    "subagents.max_output": 30000,
+    "task.autocomplete.enable": false,
+    "task.autocomplete.input_max_length": -1,
+    "task.follow_up.enable": true,
+    "task.model.default": "",
+    "task.model.external": "",
+    "task.query.retrieval.enable": true,
+    "task.query.search.enable": true,
+    "task.tags.enable": true,
+    "task.title.enable": true,
+    "task.voice.prompt.enable": true,
+    "ui.default_locale": "",
+    "ui.default_models": "or.ds41",
+    "ui.default_pinned_models": "",
+    "ui.default_user_role": "pending",
+    "ui.enable_community_sharing": true,
+    "ui.enable_login_form": true,
+    "ui.enable_message_rating": true,
+    "ui.enable_password_change_form": true,
+    "ui.enable_signup": false,
+    "ui.enable_user_webhooks": false,
+    "ui.model_order_list": [
+      "or.grok46",
+      "or.grok45",
+      "or.gemini3.8f",
+      "or.gemini3.5fl",
+      "or.ds41",
+      "or.glm53f",
+      "or.m3",
+      "or.luna",
+      "or.sonnet5",
+      "or.sol",
+      "or.opus5"
+    ],
+    "users.enable_status": true,
+    "web.loader.concurrent_requests": 10,
+    "web.loader.engine": "firecrawl",
+    "web.loader.ssl_verification": true,
+    "web.loader.timeout": "",
+    "web.search.brave_search_context_tokens": 8192,
+    "web.search.bypass_embedding_and_retrieval": false,
+    "web.search.bypass_web_loader": false,
+    "web.search.concurrent_requests": 0,
+    "web.search.confirmation.enable": false,
+    "web.search.ddgs_backend": "auto",
+    "web.search.domain.filter_list": [],
+    "web.search.enable": true,
+    "web.search.engine": "brave",
+    "web.search.result_count": 3,
+    "web.search.searxng_language": "all",
+    "web.search.trust_env": true
+  },
+  "models": {
+    "deepseek-v4-flash": {
+      "meta": {
+        "capabilities": {
+          "web_search": true
+        },
+        "defaultFeatureIds": [
+          "web_search"
+        ]
+      }
+    },
+    "deepseek-v4-pro": {
+      "meta": {
+        "capabilities": {
+          "web_search": true
+        },
+        "defaultFeatureIds": [
+          "web_search"
+        ]
+      }
+    },
+    "desk.qwen3.8-27b": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true,
+          "web_search": false
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with light deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "reasoning_effort": "low"
+              }
+            },
+            "r1": {
+              "description": "Recommended balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "reasoning_effort": "medium"
+              }
+            },
+            "r2": {
+              "description": "Maximum deliberate reasoning for difficult tasks.",
+              "label": "Deep",
+              "params": {
+                "reasoning_effort": "xhigh"
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "Desktop"
+          },
+          {
+            "name": "Qwen"
+          },
+          {
+            "name": "Vision"
+          }
+        ]
+      }
+    },
+    "desk.qwen3.8-27b.local": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": true,
+          "web_search": false
+        },
+        "defaultFeatureIds": [
+          "code_interpreter"
+        ],
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with light deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "reasoning_effort": "low"
+              }
+            },
+            "r1": {
+              "description": "Recommended balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "reasoning_effort": "medium"
+              }
+            },
+            "r2": {
+              "description": "Maximum deliberate reasoning for difficult tasks.",
+              "label": "Deep",
+              "params": {
+                "reasoning_effort": "xhigh"
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "Desktop"
+          },
+          {
+            "name": "Qwen"
+          },
+          {
+            "name": "Vision"
+          }
+        ]
+      },
+      "params": {
+        "reasoning_effort": "medium"
+      }
+    },
+    "di.Qwen/Qwen3.5-397B-A17B": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.Qwen/Qwen3.6-27B": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.Qwen/Qwen3.6-35B-A3B": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.anthropic/claude-opus-4-8": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.anthropic/claude-sonnet-5": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.deepseek-ai/DeepSeek-V4-Flash": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.deepseek-ai/DeepSeek-V4-Pro": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.ds4f": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "reasoning_effort": "none"
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "reasoning_effort": "medium"
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "reasoning_effort": "high"
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Reasoning"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "di.ds4f.deep": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Deep"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "reasoning_effort": "high"
+      }
+    },
+    "di.ds4f.instant": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Instant"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "reasoning_effort": "none"
+      }
+    },
+    "di.ds4p": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "reasoning_effort": "none"
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "reasoning_effort": "medium"
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "reasoning_effort": "high"
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Reasoning"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "di.ds4p.deep": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Deep"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "reasoning_effort": "high"
+      }
+    },
+    "di.ds4p.instant": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Instant"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "reasoning_effort": "none"
+      }
+    },
+    "di.gemini3.1-pro": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true,
+          "web_search": false
+        },
+        "hidden": true,
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "reasoning_effort": "none"
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "reasoning_effort": "medium"
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "reasoning_effort": "high"
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Gemini"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "function_calling": "legacy"
+      }
+    },
+    "di.gemini3.1fl": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false,
+          "web_search": false
+        },
+        "hidden": true,
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "reasoning_effort": "none"
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "reasoning_effort": "medium"
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "reasoning_effort": "high"
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Gemini"
+          },
+          {
+            "name": "Flash-Lite"
+          },
+          {
+            "name": "Budget"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "function_calling": "legacy"
+      }
+    },
+    "di.gemini3.5f": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false,
+          "web_search": false
+        },
+        "hidden": true,
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "reasoning_effort": "none"
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "reasoning_effort": "medium"
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "reasoning_effort": "high"
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Gemini"
+          },
+          {
+            "name": "Flash"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "function_calling": "legacy"
+      }
+    },
+    "di.gemma4-26b-a4b": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Lab"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "<40B"
+          },
+          {
+            "name": "Gemma"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "di.gemma4-31b": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Lab"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "<40B"
+          },
+          {
+            "name": "Gemma"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "di.glm5.2": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "reasoning_effort": "none"
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "reasoning_effort": "medium"
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "reasoning_effort": "high"
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Reasoning"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "di.glm5.2.deep": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Deep"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "reasoning_effort": "high"
+      }
+    },
+    "di.glm5.2.quick": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Quick"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "reasoning_effort": "none"
+      }
+    },
+    "di.google/gemini-3.1-flash-lite": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.google/gemini-3.1-pro": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.google/gemini-3.5-flash": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.google/gemma-4-26B-A4B-it": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.google/gemma-4-31B-it": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.kimi-k2.7-code": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Code"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "di.moonshotai/Kimi-K2.7-Code": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.opus4.8.rescue": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Rescue"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "reasoning_effort": "high"
+      }
+    },
+    "di.qwen3.5-397b": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Qwen"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "di.qwen3.6-27b": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Lab"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "<40B"
+          },
+          {
+            "name": "Qwen"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "di.qwen3.6-35b-a3b": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Lab"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "<40B"
+          },
+          {
+            "name": "Qwen"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "di.sonnet5": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "hidden": true,
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "reasoning_effort": "low"
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "reasoning_effort": "medium"
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "reasoning_effort": "high"
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Reasoning"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "di.sonnet5.balanced": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Balanced"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "reasoning_effort": "medium"
+      }
+    },
+    "di.sonnet5.deep": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Deep"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "reasoning_effort": "high"
+      }
+    },
+    "di.sonnet5.quick": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "DeepInfra"
+          },
+          {
+            "name": "Quick"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "reasoning_effort": "low"
+      }
+    },
+    "di.zai-org/GLM-5.1": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "di.zai-org/GLM-5.2": {
+      "meta": {
+        "hidden": true
+      }
+    },
+    "ds.ds41": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "defaultFeatureIds": [
+          "code_interpreter"
+        ],
+        "hidden": true,
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "thinking": {
+                    "type": "disabled"
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "thinking": {
+                    "type": "enabled"
+                  }
+                },
+                "reasoning_effort": "high"
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "thinking": {
+                    "type": "enabled"
+                  }
+                },
+                "reasoning_effort": "max"
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "Direct"
+          },
+          {
+            "name": "Flash"
+          },
+          {
+            "name": "Reasoning"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "ds.ds4f": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "thinking": {
+                    "type": "disabled"
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "thinking": {
+                    "type": "enabled"
+                  }
+                },
+                "reasoning_effort": "medium"
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "thinking": {
+                    "type": "enabled"
+                  }
+                },
+                "reasoning_effort": "high"
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "Direct"
+          },
+          {
+            "name": "Reasoning"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "ds.ds4f.instant": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "Direct"
+          },
+          {
+            "name": "Instant"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "custom_params": {
+          "thinking": {
+            "type": "disabled"
+          }
+        }
+      }
+    },
+    "ds.ds4f.think": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "Direct"
+          },
+          {
+            "name": "Think"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "custom_params": {
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "reasoning_effort": "high"
+      }
+    },
+    "ds.ds4p": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "thinking": {
+                    "type": "disabled"
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "thinking": {
+                    "type": "enabled"
+                  }
+                },
+                "reasoning_effort": "high"
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "thinking": {
+                    "type": "enabled"
+                  }
+                },
+                "reasoning_effort": "max"
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "Direct"
+          },
+          {
+            "name": "Reasoning"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000
+      }
+    },
+    "ds.ds4p.instant": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "Direct"
+          },
+          {
+            "name": "Instant"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "custom_params": {
+          "thinking": {
+            "type": "disabled"
+          }
+        }
+      }
+    },
+    "ds.ds4p.max": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "Direct"
+          },
+          {
+            "name": "Max"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "custom_params": {
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "reasoning_effort": "max"
+      }
+    },
+    "ds.ds4p.think": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "hidden": true,
+        "tags": [
+          {
+            "name": "Core"
+          },
+          {
+            "name": "Direct"
+          },
+          {
+            "name": "Think"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 48000,
+        "custom_params": {
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        "reasoning_effort": "high"
+      }
+    },
+    "or.ds41": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true,
+          "web_search": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "defaultFeatureIds": [
+          "code_interpreter",
+          "web_search"
+        ],
+        "openrouter": {
+          "byok_provider": "deepseek",
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "deepseek",
+          "routing_modes": [
+            "official"
+          ],
+          "web_search": true
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "none",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "high",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "xhigh",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "DeepSeek"
+          },
+          {
+            "name": "Flash"
+          },
+          {
+            "name": "Everyday"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 600000,
+        "custom_params": {
+          "provider": {
+            "allow_fallbacks": false,
+            "only": [
+              "deepseek"
+            ],
+            "require_parameters": true
+          }
+        }
+      }
+    },
+    "or.ds4f": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "openrouter": {
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "deepseek",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "web_search": true
+        },
+        "quantization": {
+          "detail": "Official DeepSeek is FP8. Fast and Cheap can route to FP4 or FP8 endpoints; check the response provider for the actual route.",
+          "label": "FP4–FP8"
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "none",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "high",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "xhigh",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "DeepSeek"
+          },
+          {
+            "name": "Flash"
+          },
+          {
+            "name": "Everyday"
+          }
+        ]
+      }
+    },
+    "or.ds4p": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "openrouter": {
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "deepseek",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "web_search": true
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "none",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "high",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "xhigh",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "DeepSeek"
+          },
+          {
+            "name": "Flagship"
+          }
+        ]
+      }
+    },
+    "or.gemini3.5fl": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": false,
+          "web_search": false
+        },
+        "defaultFeatureIds": [
+          "code_interpreter"
+        ],
+        "openrouter": {
+          "always_web_search": true,
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "google-ai-studio",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "search_defaults": {
+            "engine": "exa",
+            "max_characters": 2000,
+            "max_results": 3,
+            "max_total_results": 6,
+            "max_uses": 2
+          },
+          "web_search": true
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "low",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "medium",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "high",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "Gemini"
+          },
+          {
+            "name": "Flash-Lite"
+          },
+          {
+            "name": "Budget"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 600000,
+        "custom_params": {
+          "provider": {
+            "allow_fallbacks": false,
+            "only": [
+              "google-ai-studio"
+            ],
+            "require_parameters": true
+          }
+        }
+      }
+    },
+    "or.gemini3.6f": {
+      "meta": {
+        "capabilities": {
+          "file_upload": true,
+          "vision": false,
+          "web_search": false
+        },
+        "openrouter": {
+          "always_web_search": true,
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "google-ai-studio",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "search_defaults": {
+            "engine": "exa",
+            "max_characters": 2000,
+            "max_results": 3,
+            "max_total_results": 6,
+            "max_uses": 2
+          },
+          "web_search": true
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "low",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "medium",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "high",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "Gemini"
+          },
+          {
+            "name": "Flash"
+          },
+          {
+            "name": "Everyday"
+          }
+        ]
+      }
+    },
+    "or.gemini3.8f": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": false,
+          "web_search": false
+        },
+        "defaultFeatureIds": [
+          "code_interpreter"
+        ],
+        "openrouter": {
+          "always_web_search": true,
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "google-ai-studio",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "search_defaults": {
+            "engine": "exa",
+            "max_characters": 2000,
+            "max_results": 3,
+            "max_total_results": 6,
+            "max_uses": 2
+          },
+          "web_search": true
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "low",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "medium",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "high",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "Gemini"
+          },
+          {
+            "name": "Flash"
+          },
+          {
+            "name": "Everyday"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 600000,
+        "custom_params": {
+          "provider": {
+            "allow_fallbacks": false,
+            "only": [
+              "google-ai-studio"
+            ],
+            "require_parameters": true
+          }
+        }
+      }
+    },
+    "or.glm53f": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true,
+          "web_search": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "defaultFeatureIds": [
+          "code_interpreter",
+          "web_search"
+        ],
+        "openrouter": {
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "modal/fp8",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "web_search": true
+        },
+        "quantization": {
+          "detail": "Pinned to a provider endpoint explicitly tagged FP8; routing fallbacks are disabled.",
+          "label": "FP8"
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "medium",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "medium",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "high",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "Z.ai"
+          },
+          {
+            "name": "Flash"
+          },
+          {
+            "name": "Code"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 600000,
+        "custom_params": {
+          "provider": {
+            "allow_fallbacks": false,
+            "only": [
+              "modal/fp8"
+            ],
+            "require_parameters": true
+          }
+        }
+      }
+    },
+    "or.grok45": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true,
+          "web_search": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "defaultFeatureIds": [
+          "code_interpreter",
+          "web_search"
+        ],
+        "openrouter": {
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "xai",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "web_search": true
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "low",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "medium",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "high",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "Grok"
+          },
+          {
+            "name": "Flagship"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 350000,
+        "custom_params": {
+          "provider": {
+            "allow_fallbacks": false,
+            "only": [
+              "xai"
+            ],
+            "require_parameters": true
+          }
+        }
+      }
+    },
+    "or.grok46": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true,
+          "web_search": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "defaultFeatureIds": [
+          "code_interpreter",
+          "web_search"
+        ],
+        "openrouter": {
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "xai",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "web_search": true
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "low",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "medium",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "high",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "Grok"
+          },
+          {
+            "name": "Flagship"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 350000,
+        "custom_params": {
+          "provider": {
+            "allow_fallbacks": false,
+            "only": [
+              "xai"
+            ],
+            "require_parameters": true
+          }
+        }
+      }
+    },
+    "or.luna": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true,
+          "web_search": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "defaultFeatureIds": [
+          "code_interpreter",
+          "web_search"
+        ],
+        "openrouter": {
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "openai",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "web_search": true
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "none",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "medium",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "max",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "GPT"
+          },
+          {
+            "name": "Everyday"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 600000,
+        "custom_params": {
+          "provider": {
+            "allow_fallbacks": false,
+            "only": [
+              "openai"
+            ],
+            "require_parameters": true
+          }
+        }
+      }
+    },
+    "or.m3": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true,
+          "web_search": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": true
+        },
+        "defaultFeatureIds": [
+          "code_interpreter",
+          "web_search"
+        ],
+        "openrouter": {
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "venice/fp8",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "web_search": true
+        },
+        "quantization": {
+          "detail": "Pinned to a provider endpoint explicitly tagged FP8; routing fallbacks are disabled.",
+          "label": "FP8"
+        },
+        "tags": [
+          {
+            "name": "MiniMax"
+          },
+          {
+            "name": "Code"
+          },
+          {
+            "name": "Long Context"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 600000,
+        "custom_params": {
+          "provider": {
+            "allow_fallbacks": false,
+            "only": [
+              "venice/fp8"
+            ],
+            "require_parameters": true
+          }
+        }
+      }
+    },
+    "or.muse": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": true,
+          "web_search": false
+        },
+        "defaultFeatureIds": [
+          "code_interpreter"
+        ],
+        "openrouter": {
+          "cache_mode": "provider",
+          "default_routing_mode": "official",
+          "official_provider": "meta",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "web_search": false
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "low",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "medium",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "high",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "Meta"
+          },
+          {
+            "name": "Agentic"
+          },
+          {
+            "name": "Everyday"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 600000,
+        "custom_params": {
+          "provider": {
+            "allow_fallbacks": false,
+            "only": [
+              "meta"
+            ],
+            "require_parameters": true
+          }
+        }
+      }
+    },
+    "or.opus5": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true,
+          "web_search": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "defaultFeatureIds": [
+          "code_interpreter",
+          "web_search"
+        ],
+        "openrouter": {
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "anthropic",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "web_search": true
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "low",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "medium",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "max",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "Claude"
+          },
+          {
+            "name": "Flagship"
+          },
+          {
+            "name": "Rescue"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 600000,
+        "custom_params": {
+          "provider": {
+            "allow_fallbacks": false,
+            "only": [
+              "anthropic"
+            ],
+            "require_parameters": true
+          }
+        }
+      }
+    },
+    "or.sol": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true,
+          "web_search": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "defaultFeatureIds": [
+          "code_interpreter",
+          "web_search"
+        ],
+        "openrouter": {
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "openai",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "web_search": true
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "none",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "medium",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "max",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "GPT"
+          },
+          {
+            "name": "Flagship"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 600000,
+        "custom_params": {
+          "provider": {
+            "allow_fallbacks": false,
+            "only": [
+              "openai"
+            ],
+            "require_parameters": true
+          }
+        }
+      }
+    },
+    "or.sonnet5": {
+      "meta": {
+        "builtinTools": {
+          "code_interpreter": true,
+          "web_search": true
+        },
+        "capabilities": {
+          "file_upload": true,
+          "vision": false
+        },
+        "defaultFeatureIds": [
+          "code_interpreter",
+          "web_search"
+        ],
+        "openrouter": {
+          "cache_mode": "smart",
+          "default_routing_mode": "official",
+          "official_provider": "anthropic",
+          "routing_modes": [
+            "official",
+            "fast",
+            "cheap"
+          ],
+          "web_search": true
+        },
+        "reasoning_control": {
+          "default_level": "r1",
+          "levels": {
+            "r0": {
+              "description": "Fastest response with little or no deliberate reasoning.",
+              "label": "Instant",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "low",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r1": {
+              "description": "Good default balance of speed and deliberate reasoning.",
+              "label": "Balanced",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "medium",
+                    "exclude": false
+                  }
+                }
+              }
+            },
+            "r2": {
+              "description": "More deliberate reasoning for difficult questions.",
+              "label": "Deep",
+              "params": {
+                "custom_params": {
+                  "reasoning": {
+                    "effort": "max",
+                    "exclude": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          {
+            "name": "OpenRouter"
+          },
+          {
+            "name": "Claude"
+          },
+          {
+            "name": "Everyday"
+          }
+        ]
+      },
+      "params": {
+        "compact_token_threshold": 600000,
+        "custom_params": {
+          "provider": {
+            "allow_fallbacks": false,
+            "only": [
+              "anthropic"
+            ],
+            "require_parameters": true
+          }
+        }
+      }
+    }
+  },
+  "schema_version": 1
+}
