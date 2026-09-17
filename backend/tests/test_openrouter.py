@@ -6,6 +6,7 @@ from open_webui.routers import images as image_router
 from open_webui.utils.openrouter import (
     MANAGED_SEARCH_STATE_KEY,
     ROUTING_STATE_KEY,
+    SEARCH_FALLBACK_NOTICE,
     apply_openrouter_request,
     build_managed_search_fallback,
     finalize_openrouter_request,
@@ -441,6 +442,7 @@ def test_hidden_model_managed_search_uses_curated_external_engine():
 def test_managed_search_server_tool_failure_has_strict_tool_free_fallback():
     payload = {
         "model": "google/gemini-3.6-flash",
+        "messages": [{"role": "user", "content": "What happened today?"}],
         "tools": [
             {"type": "function", "function": {"name": "calculator"}},
             {"type": "openrouter:web_search", "parameters": {"engine": "exa"}},
@@ -458,12 +460,23 @@ def test_managed_search_server_tool_failure_has_strict_tool_free_fallback():
     assert is_openrouter_server_tool_error(
         {"error": {"message": "Internal Server Error", "code": 500}}
     )
+    assert is_openrouter_server_tool_error(
+        {
+            "error": {
+                "message": 'Server tool "openrouter:web_search" failed: invalid request'
+            }
+        }
+    )
     assert not is_openrouter_server_tool_error({"error": "rate limited"})
     assert build_managed_search_fallback(
         payload,
         {"had_max_tool_calls": False, "max_tool_calls": None},
     ) == {
         "model": "google/gemini-3.6-flash",
+        "messages": [
+            {"role": "system", "content": SEARCH_FALLBACK_NOTICE},
+            {"role": "user", "content": "What happened today?"},
+        ],
         "tools": [
             {"type": "function", "function": {"name": "calculator"}},
         ],
@@ -505,6 +518,10 @@ def test_openrouter_search_tool_is_replaced_not_duplicated():
             "parameters": {"engine": "native"},
         }
     ]
+    assert form_data[MANAGED_SEARCH_STATE_KEY] == {
+        "had_max_tool_calls": False,
+        "max_tool_calls": None,
+    }
     assert form_data["provider"]["require_parameters"] is True
     assert (
         form_data["params"]["custom_params"]["provider"]["require_parameters"]

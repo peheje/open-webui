@@ -40,6 +40,10 @@ OPENROUTER_IMAGE_MODELS = {
 DEFAULT_OPENROUTER_IMAGE_MODEL = "google/gemini-3.1-flash-image"
 MANAGED_SEARCH_STATE_KEY = "_openrouter_managed_search_state"
 ROUTING_STATE_KEY = "_openrouter_routing_state"
+SEARCH_FALLBACK_NOTICE = (
+    "Web search was temporarily unavailable. Answer without web search and "
+    "clearly tell the user that web results could not be retrieved."
+)
 
 
 def _as_dict(value: Any) -> dict:
@@ -326,6 +330,10 @@ def is_openrouter_server_tool_error(response: Any) -> bool:
             "server tool request failed",
             "internal server error",
         )
+    ) or (
+        "server tool" in normalized
+        and "failed" in normalized
+        and "invalid request" in normalized
     )
 
 
@@ -353,6 +361,20 @@ def build_managed_search_fallback(form_data: dict, state: Any) -> dict:
     provider = fallback.get("provider")
     if isinstance(provider, dict):
         provider["require_parameters"] = True
+
+    messages = fallback.get("messages")
+    if isinstance(messages, list):
+        insert_at = 0
+        while (
+            insert_at < len(messages)
+            and isinstance(messages[insert_at], dict)
+            and messages[insert_at].get("role") == "system"
+        ):
+            insert_at += 1
+        messages.insert(
+            insert_at,
+            {"role": "system", "content": SEARCH_FALLBACK_NOTICE},
+        )
 
     return fallback
 
@@ -384,14 +406,15 @@ def apply_openrouter_request(
     if not should_use_openrouter_search(features, model):
         return False
 
+    form_data[MANAGED_SEARCH_STATE_KEY] = {
+        "had_max_tool_calls": "max_tool_calls" in form_data,
+        "max_tool_calls": deepcopy(form_data.get("max_tool_calls")),
+    }
+
     if control.get("always_web_search"):
         # Hidden model-managed search must not inherit a stale per-chat engine
         # such as ``native``. The curated defaults are the safety contract.
         search_options = _as_dict(control.get("search_defaults"))
-        form_data[MANAGED_SEARCH_STATE_KEY] = {
-            "had_max_tool_calls": "max_tool_calls" in form_data,
-            "max_tool_calls": deepcopy(form_data.get("max_tool_calls")),
-        }
     else:
         search_options = features.get("web_search_config")
     search_parameters = resolve_openrouter_search_parameters(search_options)

@@ -1424,7 +1424,7 @@
           "routing_modes": [
             "official"
           ],
-          "web_search": true
+          "web_search": false
         },
         "reasoning_control": {
           "default_level": "r1",
@@ -1510,7 +1510,7 @@
             "fast",
             "cheap"
           ],
-          "web_search": true
+          "web_search": false
         },
         "quantization": {
           "detail": "Official DeepSeek is FP8. Fast and Cheap can route to FP4 or FP8 endpoints; check the response provider for the actual route.",
@@ -1588,7 +1588,7 @@
             "fast",
             "cheap"
           ],
-          "web_search": true
+          "web_search": false
         },
         "reasoning_control": {
           "default_level": "r1",
@@ -1674,7 +1674,7 @@
             "max_total_results": 6,
             "max_uses": 2
           },
-          "web_search": true
+          "web_search": false
         },
         "reasoning_control": {
           "default_level": "r1",
@@ -1769,7 +1769,7 @@
             "max_total_results": 6,
             "max_uses": 2
           },
-          "web_search": true
+          "web_search": false
         },
         "reasoning_control": {
           "default_level": "r1",
@@ -1858,7 +1858,7 @@
             "max_total_results": 6,
             "max_uses": 2
           },
-          "web_search": true
+          "web_search": false
         },
         "reasoning_control": {
           "default_level": "r1",
@@ -1952,7 +1952,7 @@
             "fast",
             "cheap"
           ],
-          "web_search": true
+          "web_search": false
         },
         "quantization": {
           "detail": "Pinned to a provider endpoint explicitly tagged FP8; routing fallbacks are disabled.",
@@ -2050,7 +2050,7 @@
             "fast",
             "cheap"
           ],
-          "web_search": true
+          "web_search": false
         },
         "reasoning_control": {
           "default_level": "r1",
@@ -2141,7 +2141,7 @@
             "fast",
             "cheap"
           ],
-          "web_search": true
+          "web_search": false
         },
         "reasoning_control": {
           "default_level": "r1",
@@ -2232,7 +2232,7 @@
             "fast",
             "cheap"
           ],
-          "web_search": true
+          "web_search": false
         },
         "reasoning_control": {
           "default_level": "r1",
@@ -2323,7 +2323,7 @@
             "fast",
             "cheap"
           ],
-          "web_search": true
+          "web_search": false
         },
         "quantization": {
           "detail": "Pinned to a provider endpoint explicitly tagged FP8; routing fallbacks are disabled.",
@@ -2470,7 +2470,7 @@
             "fast",
             "cheap"
           ],
-          "web_search": true
+          "web_search": false
         },
         "reasoning_control": {
           "default_level": "r1",
@@ -2564,7 +2564,7 @@
             "fast",
             "cheap"
           ],
-          "web_search": true
+          "web_search": false
         },
         "reasoning_control": {
           "default_level": "r1",
@@ -2655,7 +2655,7 @@
             "fast",
             "cheap"
           ],
-          "web_search": true
+          "web_search": false
         },
         "reasoning_control": {
           "default_level": "r1",
