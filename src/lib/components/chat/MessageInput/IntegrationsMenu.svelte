@@ -632,8 +632,13 @@
 									</div>
 								</div>
 
-								<div class=" shrink-0" inert>
-									<Switch state={codeInterpreterEnabled} />
+								<div
+									class="min-w-9 shrink-0 rounded-full px-2 py-0.5 text-center text-[0.6875rem] font-medium transition-colors {codeInterpreterEnabled
+										? 'bg-sky-100 text-sky-700 dark:bg-sky-400/20 dark:text-sky-200'
+										: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}"
+									aria-hidden="true"
+								>
+									{codeInterpreterEnabled ? $i18n.t('On') : $i18n.t('Off')}
 								</div>
 							</button>
 						</Tooltip>

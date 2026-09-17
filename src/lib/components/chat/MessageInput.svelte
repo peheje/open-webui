@@ -2565,10 +2565,19 @@
 												<button
 													type="button"
 													id="integration-menu-button"
-													class="bg-transparent hover:bg-gray-100 text-gray-700 dark:text-white dark:hover:bg-gray-800 rounded-full size-[1.875rem] flex justify-center items-center outline-hidden focus:outline-hidden shrink-0"
-													aria-label={$i18n.t('Integrations')}
+													class="flex shrink-0 items-center justify-center rounded-full outline-hidden transition-colors focus:outline-hidden {$mobile
+														? `h-[1.875rem] gap-1.5 px-2 text-xs ${
+																webSearchEnabled || codeInterpreterEnabled
+																	? 'border border-sky-300/60 bg-sky-100 text-sky-700 hover:bg-sky-200 dark:border-sky-400/30 dark:bg-sky-400/20 dark:text-sky-200 dark:hover:bg-sky-400/30'
+																	: 'bg-transparent text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800'
+															}`
+														: 'size-[1.875rem] bg-transparent text-gray-700 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800'}"
+													aria-label={$mobile ? $i18n.t('Auto tools') : $i18n.t('Integrations')}
 												>
 													<Component className="size-4.5" strokeWidth="1.5" />
+													{#if $mobile}
+														<span class="whitespace-nowrap">{$i18n.t('Auto tools')}</span>
+													{/if}
 												</button>
 											</IntegrationsMenu>
 										{/if}
@@ -2722,7 +2731,7 @@
 												</Tooltip>
 											{/if}
 
-											{#if !directImageMode && openRouterControl}
+											{#if !$mobile && !directImageMode && openRouterControl}
 												<Tooltip
 													content={`${$i18n.t('Routing')}: ${getOpenRouterRoutingMode(resolvedOpenRouterRoutingMode).label}. ${$i18n.t('Tap to cycle')}; ${$i18n.t('hold for settings')}.`}
 													placement="top"
@@ -2748,7 +2757,7 @@
 												</Tooltip>
 											{/if}
 
-											{#if showWebSearchButton}
+											{#if !$mobile && showWebSearchButton}
 												<Tooltip
 													content={`${$i18n.t('Web Search')}: ${webSearchEnabled ? $i18n.t('Enabled') : $i18n.t('Disabled')} · ${webSearchEngine}. ${$i18n.t('Tap to toggle')}; ${$i18n.t('hold for settings')}.`}
 													placement="top"
@@ -2799,7 +2808,7 @@
 												</Tooltip>
 											{/if}
 
-											{#if codeInterpreterEnabled && showCodeInterpreterButton}
+											{#if !$mobile && codeInterpreterEnabled && showCodeInterpreterButton}
 												<Tooltip content={$i18n.t('Code Interpreter')} placement="top">
 													<button
 														aria-label={codeInterpreterEnabled
