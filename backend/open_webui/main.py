@@ -1137,8 +1137,15 @@ async def chat_completion(
 
             model = request.app.state.MODELS[model_id]
             model_info = await Models.get_model_by_id(model_id)
+            # Custom presets point at hidden upstream base models, which live in
+            # BASE_MODELS rather than MODELS.
             missing_base_model = bool(
-                model_info and model_info.base_model_id and model_info.base_model_id not in request.app.state.MODELS
+                model_info
+                and model_info.base_model_id
+                and model_info.base_model_id not in request.app.state.MODELS
+                and not any(
+                    base_model.get('id') == model_info.base_model_id for base_model in request.app.state.BASE_MODELS
+                )
             )
 
             if missing_base_model and ENABLE_CUSTOM_MODEL_FALLBACK:
