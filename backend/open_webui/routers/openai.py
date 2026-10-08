@@ -24,6 +24,7 @@ from open_webui.config import (
 from open_webui.constants import ERROR_MESSAGES
 from open_webui.env import (
     AIOHTTP_CLIENT_SESSION_SSL,
+    AIOHTTP_CLIENT_TIMEOUT,
     AIOHTTP_CLIENT_TIMEOUT_MODEL_LIST,
     BYPASS_MODEL_ACCESS_CONTROL,
     ENABLE_FORWARD_USER_INFO_HEADERS,
@@ -1702,7 +1703,7 @@ async def generate_chat_completion(
                     payload_data,
                     managed_search_state,
                 )
-                payload = json.dumps(drop_empty_tools(fallback_data))
+                payload = JSONCodec.dumps(drop_empty_tools(fallback_data))
                 r = await session.request(
                     method='POST',
                     url=request_url,

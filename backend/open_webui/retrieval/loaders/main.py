@@ -9,6 +9,7 @@ import ftfy
 import requests
 from fastapi import HTTPException
 from azure.identity import DefaultAzureCredential
+from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 from open_webui.env import (
     AIOHTTP_CLIENT_SESSION_SSL,

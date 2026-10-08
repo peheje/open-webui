@@ -3247,6 +3247,8 @@
 			await tick();
 			if (autoScroll) scrollToBottom();
 		}
+	};
+
 	const clearCommandInput = () => {
 		messageInput?.setText('');
 		prompt = '';
