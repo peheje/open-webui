@@ -12,6 +12,9 @@ const devAllowedHosts = (process.env.OWUI_DEV_ALLOWED_HOSTS || 'localhost')
 	.filter(Boolean);
 
 export default defineConfig({
+	resolve: {
+		conditions: ['onnxruntime-web-use-extern-wasm']
+	},
 	plugins: [
 		sveltekit(),
 		viteStaticCopy({

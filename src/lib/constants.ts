@@ -1,6 +1,9 @@
-import { browser, dev } from '$app/environment';
 // import { version } from '../../package.json';
 
+// LICENSE covers this Open WebUI branding surface, including name, logo,
+// visual, textual, symbolic identifiers, metadata, and surrounding UI.
+// Do not alter, remove, obscure, or replace it except as LICENSE permits:
+// https://docs.openwebui.com/license.
 export const APP_NAME = 'Open WebUI';
 
 const useDevProxy = import.meta.env.VITE_WEBUI_DEV_PROXY === 'true';
@@ -27,6 +30,12 @@ export const AUDIO_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1/audio`;
 export const IMAGES_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1/images`;
 export const RETRIEVAL_API_BASE_URL = `${WEBUI_BASE_URL}/api/v1/retrieval`;
 
+export const COMMUNITY_ORIGINS = [
+	'https://openwebui.com',
+	'https://www.openwebui.com',
+	'http://localhost:9999'
+];
+
 // The version changes, but the promise must not. Let what
 // was built here keep its word across every release.
 export const WEBUI_VERSION = APP_VERSION;
@@ -43,6 +52,9 @@ export const SUPPORTED_FILE_TYPE = [
 	'text/x-python',
 	'text/css',
 	'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	'application/vnd.oasis.opendocument.text',
+	'application/vnd.oasis.opendocument.spreadsheet',
+	'application/vnd.oasis.opendocument.presentation',
 	'application/octet-stream',
 	'application/x-javascript',
 	'text/markdown',
@@ -101,13 +113,16 @@ export const SUPPORTED_FILE_EXTENSIONS = [
 	'svelte',
 	'doc',
 	'docx',
+	'odt',
 	'pdf',
 	'csv',
 	'txt',
 	'xls',
 	'xlsx',
+	'ods',
 	'pptx',
 	'ppt',
+	'odp',
 	'msg'
 ];
 
@@ -122,6 +137,7 @@ export const DEFAULT_CAPABILITIES = {
 	citations: true,
 	status_updates: true,
 	usage: undefined,
+	memory: true,
 	builtin_tools: true
 };
 
